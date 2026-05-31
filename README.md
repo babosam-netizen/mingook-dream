@@ -4,6 +4,10 @@
 > 교실을 '작은 대한민국'으로 만들어 시민단체 → 선거 → 입법·행정·사법 → 여론 형성을 학생들이 직접 경험합니다.
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ko)
+[![Demo](https://img.shields.io/badge/🔗%20라이브%20데모-mingook--dream.pages.dev-blue)](https://mingook-dream.pages.dev)
+
+> 🔗 **라이브 데모**: [mingook-dream.pages.dev](https://mingook-dream.pages.dev)  
+> 👩‍🏫 교사 체험 암호: `demos123`
 
 ---
 

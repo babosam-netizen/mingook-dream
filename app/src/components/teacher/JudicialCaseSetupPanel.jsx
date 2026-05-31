@@ -202,21 +202,43 @@ export default function JudicialCaseSetupPanel({ bc, onChange, className: classN
 15. **trialScript (재판 대본) 필수** — 판사·검사·변호사·증인·피고인의 대사를 순서대로 작성합니다.
     (판결중심 모드에서 학생들이 보고 연기/참관하는 대본입니다. 역할중심 모드에서는 사용하지 않지만, 한 사건으로 두 모드 다 쓸 수 있도록 항상 작성하세요.)
     - 각 줄 형식: { "order": 숫자, "scene": "막 이름", "speaker": "judge|prosecution|defense|witness|defendant", "text": "대사 1~3문장" }
-    - scene 예: 모두진술 / 증거조사 / 증인심문 / 피고인신문 / 최종변론 / 선고직전
+    - scene 값: 모두진술 / 증거조사 / 증인신문 / 피고인신문 / 최종변론 / 선고직전
     - 공방 대사를 통해 위 keyIssues(핵심 쟁점)가 자연스럽게 드러나야 합니다 (학생이 보고 판결할 수 있도록).
-    - 총 16~24줄. **마지막 줄은 speaker:"judge"가 "이제 판결은 판사 여러분께 맡깁니다" 식으로 끝내고, 유죄/무죄 결론은 절대 말하지 않습니다** (판결은 학생 몫).`
+    - 총 20~30줄. **마지막 줄은 speaker:"judge"가 "이제 판결은 배심원 여러분께 맡기겠습니다" 식으로 끝내고, 유죄/무죄 결론은 절대 말하지 않습니다** (판결은 학생 몫).
+
+    [각 장면별 필수 구성]
+    ① 모두진술: 판사가 "지금부터 재판을 시작합니다"로 개정 선언 → 검사 모두진술(기소 요지) → 변호인 모두진술(변론 요지)
+    ② 증거조사: **판사가 반드시 "이제 증거조사를 시작하겠습니다"라고 먼저 선언** → 검사가 각 증거를 하나씩 제시하며 설명 → 변호인이 각 증거에 반박 (최소 2회 이상 주고받기)
+    ③ 증인신문: **판사가 반드시 "○○ 증인을 불러 주십시오. 증인 신문 시작합니다"라고 선언** → 검사가 증인에게 질문(Q) → 증인이 답변(A) → 변호인이 증인에게 반대신문(Q) → 증인이 답변(A) 형식으로 Q&A를 최소 4회 이상 주고받기. 증인은 statement처럼 이야기체가 아니라 "예.", "아니요.", "저는 그날 직접 봤습니다." 처럼 짧고 구체적으로 답해야 합니다.
+    ④ 피고인신문: **판사가 반드시 "이제 피고인 신문을 하겠습니다"라고 선언** → 검사 질문(Q) → 피고인 답변(A) → 변호인 질문(Q) → 피고인 답변(A) 최소 3회 이상 주고받기
+    ⑤ 최종변론: **판사가 반드시 "이제 최종변론을 듣겠습니다. 검사 측부터 하십시오"라고 선언** → 검사 구형 및 최종 의견 → 변호인 최종변론
+    ⑥ 선고직전: 판사가 "양측 주장을 모두 들었습니다. 이제 판결은 배심원 여러분께 맡기겠습니다."로 마무리 (유죄/무죄 결론 절대 금지)`
     const scriptSchema = `,
   "trialScript": [
-    { "order": 1, "scene": "모두진술", "speaker": "judge", "text": "지금부터 재판을 시작합니다. 검사 측 모두진술 하십시오." },
-    { "order": 2, "scene": "모두진술", "speaker": "prosecution", "text": "검사 측 첫 주장 1~3문장." },
-    { "order": 3, "scene": "모두진술", "speaker": "defense", "text": "변호 측 첫 주장 1~3문장." },
-    { "order": 4, "scene": "증거조사", "speaker": "prosecution", "text": "증거를 제시하며 주장." },
-    { "order": 5, "scene": "증거조사", "speaker": "defense", "text": "반박." },
-    { "order": 6, "scene": "증인심문", "speaker": "witness", "text": "증인 진술 1~3문장." },
-    { "order": 7, "scene": "피고인신문", "speaker": "defendant", "text": "피고인 진술 1~3문장." },
-    { "order": 8, "scene": "최종변론", "speaker": "prosecution", "text": "검사 구형." },
-    { "order": 9, "scene": "최종변론", "speaker": "defense", "text": "변호 최종변론." },
-    { "order": 10, "scene": "선고직전", "speaker": "judge", "text": "양측 의견 잘 들었습니다. 이제 판결은 판사 여러분께 맡기겠습니다. (결론은 말하지 않음)" }
+    { "order": 1, "scene": "모두진술", "speaker": "judge", "text": "지금부터 재판을 시작합니다. 피고인은 자리에서 일어나 주십시오. (잠시 후) 착석하세요. 검사 측, 모두진술 하십시오." },
+    { "order": 2, "scene": "모두진술", "speaker": "prosecution", "text": "검사 측 기소 요지 2~3문장. 피고인이 어떤 법을 어떻게 위반했는지 설명." },
+    { "order": 3, "scene": "모두진술", "speaker": "defense", "text": "변호인 측 변론 요지 2~3문장. 피고인 무죄 또는 감형 이유." },
+    { "order": 4, "scene": "증거조사", "speaker": "judge", "text": "이제 증거조사를 시작하겠습니다. 검사 측, 첫 번째 증거를 제시하십시오." },
+    { "order": 5, "scene": "증거조사", "speaker": "prosecution", "text": "첫 번째 증거 제시 및 설명 2문장." },
+    { "order": 6, "scene": "증거조사", "speaker": "defense", "text": "첫 번째 증거에 대한 반박 1~2문장." },
+    { "order": 7, "scene": "증거조사", "speaker": "prosecution", "text": "두 번째 증거 제시 및 설명 2문장." },
+    { "order": 8, "scene": "증거조사", "speaker": "defense", "text": "두 번째 증거에 대한 반박 1~2문장." },
+    { "order": 9, "scene": "증인신문", "speaker": "judge", "text": "○○ 증인을 불러 주십시오. (잠시 후) 증인 신문을 시작합니다. 검사 측, 신문하십시오." },
+    { "order": 10, "scene": "증인신문", "speaker": "prosecution", "text": "증인에게 묻는 질문 한 문장?" },
+    { "order": 11, "scene": "증인신문", "speaker": "witness", "text": "짧고 구체적인 답변. 예: '예, 저는 그날 직접 봤습니다. ○○이 ○○하는 것을 보았습니다.'" },
+    { "order": 12, "scene": "증인신문", "speaker": "prosecution", "text": "두 번째 질문 한 문장?" },
+    { "order": 13, "scene": "증인신문", "speaker": "witness", "text": "짧고 구체적인 두 번째 답변." },
+    { "order": 14, "scene": "증인신문", "speaker": "defense", "text": "반대신문 질문 한 문장?" },
+    { "order": 15, "scene": "증인신문", "speaker": "witness", "text": "반대신문 답변. 짧고 사실에 충실하게." },
+    { "order": 16, "scene": "피고인신문", "speaker": "judge", "text": "이제 피고인 신문을 하겠습니다. 검사 측, 신문하십시오." },
+    { "order": 17, "scene": "피고인신문", "speaker": "prosecution", "text": "피고인에게 묻는 질문 한 문장?" },
+    { "order": 18, "scene": "피고인신문", "speaker": "defendant", "text": "피고인 답변 1~2문장. 해명 또는 인정." },
+    { "order": 19, "scene": "피고인신문", "speaker": "defense", "text": "변호인 질문 한 문장 (유리한 사실 이끌어내기)?" },
+    { "order": 20, "scene": "피고인신문", "speaker": "defendant", "text": "피고인 답변 1~2문장." },
+    { "order": 21, "scene": "최종변론", "speaker": "judge", "text": "이제 최종변론을 듣겠습니다. 검사 측부터 하십시오." },
+    { "order": 22, "scene": "최종변론", "speaker": "prosecution", "text": "최종 구형 및 의견 2~3문장. 구체적 형량 포함." },
+    { "order": 23, "scene": "최종변론", "speaker": "defense", "text": "최종 변론 2~3문장. 무죄 또는 선처 요청." },
+    { "order": 24, "scene": "선고직전", "speaker": "judge", "text": "양측 주장을 모두 들었습니다. 이제 판결은 배심원 여러분께 맡기겠습니다." }
   ]`
 
     return `초등 6학년 사회 수업 '민국이의 꿈' — ${className} 국민참여재판 사건 시나리오 JSON 생성 프롬프트 (배경 이야기 + 증거·증인 + 재판 대본 모두 포함 — 두 모드 공용)

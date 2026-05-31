@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import useDebateStore, { DEBATE_SIDE_LABELS } from '../../store/debateStore'
 import { useWorkflow } from '../../lib/use-workflow'
-import { updateAt, subscribe } from '../../lib/rtdb-helpers'
+import { updateAt, subscribe, pushUnder } from '../../lib/rtdb-helpers'
 import StancePoll from './tools/StancePoll'
 import DebatePrepCard from './tools/DebatePrepCard'
 import DebateTimer, { computeRemaining, getRoundInfo } from './tools/DebateTimer'
@@ -11,6 +11,7 @@ import DebateScriptEditor from './tools/DebateScriptEditor'
 import DebateScriptPrompter from './tools/DebateScriptPrompter'
 import ArticleSection from '../news/ArticleSection'
 import JudicialCaseRoomButton from '../phase3/JudicialCaseRoomButton'
+import PlaceholderField, { isFieldComplete } from '../scaffolding/PlaceholderField'
 
 /** 같은 debateStage의 여러 eval 항목을 대상별로 병합해 평균 반환 */
 function mergeStageTargets(items) {
@@ -281,6 +282,166 @@ function VerdictTrialMemo({ session, myStudentId, myNickname, mySideId }) {
   )
 }
 
+function VerdictTrialDraftPanel({ session, groupId, groups, sections, myStudentId, myNickname }) {
+  const roomCode = useGameStore((s) => s.roomCode)
+  const draft = groupId ? session?.verdictDrafts?.[groupId] || {} : {}
+  const [values, setValues] = useState(draft.templateData || {})
+  const [decision, setDecision] = useState(draft.decision || '')
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const saveTimerRef = useRef(null)
+  const memberIds = useMemo(
+    () => new Set(Object.keys(groups?.[groupId]?.members || {})),
+    [groups, groupId],
+  )
+  const memos = useMemo(() => (
+    Object.values(session?.verdictMemos || {})
+      .filter((memo) => memo?.body && memberIds.has(memo.studentId))
+  ), [session?.verdictMemos, memberIds])
+
+  const allComplete = decision && sections.every((section) => isFieldComplete(values[section.id]))
+
+  const persistDraft = (nextValues, nextDecision = decision) => {
+    if (!roomCode || !session?.id || !groupId) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      updateAt(roomCode, `debateSessions/${session.id}/verdictDrafts/${groupId}`, {
+        templateData: nextValues,
+        decision: nextDecision,
+        groupId,
+        lastAuthorStudentId: myStudentId || '',
+        lastAuthorName: myNickname || '',
+      }).catch(() => {})
+    }, 700)
+  }
+
+  const updateValue = (sectionId, value) => {
+    setValues((prev) => {
+      const next = { ...prev, [sectionId]: value }
+      persistDraft(next)
+      return next
+    })
+  }
+
+  const updateDecision = (nextDecision) => {
+    setDecision(nextDecision)
+    persistDraft(values, nextDecision)
+  }
+
+  const submitVerdict = async () => {
+    if (!roomCode || !session?.relatedCaseId || !groupId || !allComplete || busy) return
+    setBusy(true)
+    try {
+      const body = sections
+        .map((section) => `◎ ${section.label}\n${values[section.id] || ''}`)
+        .join('\n\n')
+      await pushUnder(roomCode, `verdicts/${session.relatedCaseId}`, {
+        decision,
+        body,
+        templateData: values,
+        sentence: values.order || '',
+        judgeGroupId: groupId,
+        sourceDebateSessionId: session.id,
+      })
+      setDone(true)
+      setTimeout(() => setDone(false), 2500)
+    } catch (err) {
+      alert('판결문 게시 실패: ' + (err?.message || err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
+  if (!groupId) {
+    return (
+      <section className="bg-white border-2 border-slate-200 rounded-2xl p-4 text-center">
+        <p className="text-sm font-bold text-slate-500">모둠에 들어가면 판결문 공동 작성 칸이 표시됩니다.</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="bg-white border-2 border-rose-200 rounded-2xl p-4 space-y-4">
+      <header>
+        <h3 className="text-sm font-black text-rose-900">📜 우리 모둠 판결문 공동 작성</h3>
+        <p className="text-[11px] text-rose-600 mt-0.5">
+          위 메모를 카드처럼 보며 모둠 판결문을 함께 작성하세요. 입력 내용은 자동저장되고, 완성하면 바로 게시할 수 있습니다.
+        </p>
+      </header>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+        <p className="text-xs font-black text-amber-900">🗂️ 우리 모둠 메모 카드</p>
+        {memos.length === 0 ? (
+          <p className="text-xs text-amber-700">아직 우리 모둠 학생이 작성한 재판 메모가 없습니다.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+            {memos.map((memo, i) => (
+              <article key={`${memo.studentId}-${i}`} className="rounded-lg bg-white border border-amber-100 p-2">
+                <p className="text-[10px] font-bold text-amber-700 mb-1">{memo.studentName || memo.studentId}</p>
+                <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{memo.body}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          ['guilty', '유죄'],
+          ['notGuilty', '무죄'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => updateDecision(value)}
+            className={`rounded-xl border-2 px-3 py-2 text-sm font-black ${
+              decision === value
+                ? value === 'guilty'
+                  ? 'bg-rose-600 border-rose-600 text-white'
+                  : 'bg-emerald-600 border-emerald-600 text-white'
+                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {sections.map((section) => (
+          <PlaceholderField
+            key={section.id}
+            label={section.label}
+            placeholder={section.placeholder}
+            value={values[section.id] || ''}
+            onChange={(value) => updateValue(section.id, value)}
+            rows={section.rows}
+            maxLength={section.maxLength}
+          />
+        ))}
+      </div>
+
+      {done && (
+        <p className="text-sm text-emerald-700 bg-emerald-50 px-2 py-1 rounded">✓ 판결문 게시 완료.</p>
+      )}
+      <button
+        type="button"
+        disabled={!allComplete || busy}
+        onClick={submitVerdict}
+        className="w-full py-3 rounded-xl bg-rose-700 text-white font-black disabled:opacity-40 hover:bg-rose-800"
+      >
+        {busy ? '게시 중...' : allComplete ? '판결문 게시' : '결론과 빈칸을 모두 채워 주세요'}
+      </button>
+    </section>
+  )
+}
+
 /* ── 여론판 기사 참고 인라인 패널 ── */
 function ArticleRefPanel() {
   const roomCode = useGameStore((s) => s.roomCode)
@@ -349,6 +510,8 @@ function DebateToolPanel() {
   const roomCode = useGameStore((s) => s.roomCode)
   const myStudentId = useGameStore((s) => s.myStudentId)
   const myNickname = useGameStore((s) => s.myNickname)
+  const groups = useGameStore((s) => s.groups)
+  const verdictSections = useGameStore((s) => s.config?.templates?.verdict?.sections) || []
   const debateEnabled = useGameStore((s) => s.config?.debateToolEnabled !== false)
   // 선거 투표 상태 — vote 단계에서 투표 중/종료 시에만 억제 (다른 단계에서는 억제 안 함)
   const electionStatus = useGameStore((s) => s.electionStatus)
@@ -370,6 +533,10 @@ function DebateToolPanel() {
   // 평가단 전용 — 선택된 평가 단계 (타이머 자동진행 무관)
   const [selectedEvalStage, setSelectedEvalStage] = useState(0)
 const lastSessionIdRef = useRef(null)
+  const myGroupId = useMemo(() => {
+    if (!myStudentId) return null
+    return Object.entries(groups || {}).find(([, g]) => g?.members?.[myStudentId])?.[0] || null
+  }, [groups, myStudentId])
 
   // RTDB 구독
   useEffect(() => {
@@ -842,6 +1009,17 @@ const lastSessionIdRef = useRef(null)
                           myStudentId={myStudentId}
                           myNickname={myNickname}
                           mySideId={mySideId}
+                        />
+                      )}
+
+                      {isVerdictTrialSession && myStudentId && (
+                        <VerdictTrialDraftPanel
+                          session={session}
+                          groupId={myGroupId}
+                          groups={groups}
+                          sections={verdictSections}
+                          myStudentId={myStudentId}
+                          myNickname={myNickname}
                         />
                       )}
 

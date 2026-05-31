@@ -441,7 +441,7 @@ function JudicialVerdictTab({ previewMode = false }) {
                 {Object.entries(postedVerdicts)
                   .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
                   .map(([gid, v]) => (
-                    <details key={gid} className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
+                    <details key={gid} open className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
                       <summary className="cursor-pointer px-3 py-2 bg-slate-100 flex items-center gap-2 select-none">
                         <span className="text-sm font-bold text-slate-800">
                           🧑‍⚖️ {groups?.[gid]?.name || gid}

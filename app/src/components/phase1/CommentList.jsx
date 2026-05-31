@@ -247,6 +247,12 @@ function CommentList({ targetType, targetId, targetGroupId, readOnly = false, al
           onSubmit={onSubmit}
           className="mb-3 bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2"
         >
+          {isVerdictTarget && (
+            <div className="rounded-lg bg-white border border-violet-100 px-3 py-2">
+              <p className="text-[11px] font-bold text-violet-700 mb-1">3축 평가</p>
+              <MultiAxisRating value={rating} onChange={setRating} compact axes={ratingAxes} />
+            </div>
+          )}
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -268,7 +274,7 @@ function CommentList({ targetType, targetId, targetGroupId, readOnly = false, al
             maxLength={150}
           />
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <MultiAxisRating value={rating} onChange={setRating} compact axes={ratingAxes} />
+            {!isVerdictTarget && <MultiAxisRating value={rating} onChange={setRating} compact axes={ratingAxes} />}
             <div className="flex gap-1">
               {editing && (
                 <button

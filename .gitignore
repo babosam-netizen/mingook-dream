@@ -27,3 +27,9 @@ app/.claude/
 # 로그
 *.log
 npm-debug.log*
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

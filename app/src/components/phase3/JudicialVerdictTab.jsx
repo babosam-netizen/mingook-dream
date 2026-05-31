@@ -34,9 +34,8 @@ const ACTING_META = {
  * 워크플로 step → stage:
  *   verdict-prep       (0) ① 준비 — 사건 개요 파악 + 팀 배정 확인
  *   verdict-issues     (1) ② 쟁점 파악 — 모둠별 쟁점 메모
- *   verdict-trial      (2) ③ 재판 보기 — 연기 3팀만 자기 대사 노출, 나머지는 참관·메모
- *   verdict-writing    (3) ④ 판결문 작성·게시 — 전 모둠이 판결문 작성
- *   verdict-discussion (4) ⑤ 온라인 토의 — 게시된 판결문 비교
+ *   verdict-trial      (2) ③ 재판하기 — 연기 3팀 대본 연기 + 토론도구에서 판결문 작성·게시
+ *   verdict-discussion (3) ④ 판결문 토의 — 게시된 판결문 비교
  *   article3           (5) ⑥ 기사 작성
  *   poll4              (6) ⑦ 여론조사
  */
@@ -48,8 +47,8 @@ function JudicialVerdictTab({ previewMode = false }) {
   const students    = useGameStore((s) => s.students)
   const branchConfig = useGameStore((s) => s.config?.branchConfig)
 
-  const judicialCaseId = branchConfig?.judicial?.activeCaseId || 'judicial-default'
   const activeCase     = branchConfig?.judicial?.activeCase || null
+  const judicialCaseId = activeCase?.id || branchConfig?.judicial?.activeCaseId || 'judicial-default'
   const trialScript = useMemo(
     () => Array.isArray(activeCase?.trialScript) ? activeCase.trialScript : [],
     [activeCase],
@@ -67,10 +66,9 @@ function JudicialVerdictTab({ previewMode = false }) {
     'verdict-prep':       0,
     'verdict-issues':     1,
     'verdict-trial':      2,
-    'verdict-writing':    3,
-    'verdict-discussion': 4,
-    article3:             5,
-    poll4:                6,
+    'verdict-discussion': 3,
+    article3:             4,
+    poll4:                5,
   }
   const knownStage = STAGE_OF_STEP[stepId]
   const isKnown    = knownStage !== undefined
@@ -85,10 +83,10 @@ function JudicialVerdictTab({ previewMode = false }) {
   const prepMode       = modeFor([0])
   const issuesMode     = modeFor([1])
   const trialMode      = modeFor([2])
-  const writingMode    = modeFor([3])
-  const discussionMode = modeFor([4])
-  const articleMode    = modeFor([5])
-  const pollMode       = modeFor([6])
+  const writingMode    = 'hidden'
+  const discussionMode = modeFor([3])
+  const articleMode    = modeFor([4])
+  const pollMode       = modeFor([5])
 
   const prepRef       = useRef(null)
   const issuesRef     = useRef(null)
@@ -315,16 +313,16 @@ function JudicialVerdictTab({ previewMode = false }) {
         </div>
       )}
 
-      {/* ════════ ③ 재판 보기 (대본 연기) ════════ */}
+      {/* ════════ ③ 재판하기 (대본 연기 + 판결문 작성) ════════ */}
       {trialMode !== 'hidden' && (
         <div ref={trialRef} className={sectionWrap(trialMode)}>
           <div className="bg-white rounded-xl border border-rose-200 px-4 py-3 mb-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h2 className="text-base font-bold text-rose-800">🎬 ③ 재판 보기 (대본 연기)</h2>
+                <h2 className="text-base font-bold text-rose-800">🎬 ③ 재판하기</h2>
                 <p className="text-xs text-rose-600 mt-0.5">
                   연기 3팀(판사·검사·변호사)은 각자 <b>자기 대사</b>를 보며 순서대로 연기합니다.
-                  나머지 모둠은 재판을 보며 판결문에 쓸 내용을 <b>메모</b>하세요.
+                  나머지 모둠은 토론도구에서 메모하고 모둠 판결문을 작성·게시하세요.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -427,7 +425,7 @@ function JudicialVerdictTab({ previewMode = false }) {
       {discussionMode !== 'hidden' && (
         <div ref={discussionRef} className={sectionWrap(discussionMode)}>
           <div className="bg-white rounded-xl border border-violet-200 px-4 py-3 mb-3">
-            <h2 className="text-base font-bold text-violet-800">💬 ⑤ 온라인 토의 — 판결문 비교</h2>
+            <h2 className="text-base font-bold text-violet-800">💬 ④ 판결문 토의</h2>
             <p className="text-xs text-violet-600 mt-0.5">
               모둠별 판결문을 펼쳐 읽고, <b>결론과 근거</b>가 어떻게 다른지 비교하며 의견을 나눕니다.
             </p>

@@ -185,11 +185,10 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
   const VERDICT_STAGE_INFO = [
     ['① 준비 (사건 개요+팀 배정)',  '사건 개요를 함께 읽고, 연기 3팀(판사·검사·변호사)을 지정하세요. 나머지 모둠은 판결문 작성팀입니다. 아래에서 사건·대본·연기팀을 모두 설정할 수 있어요.'],
     ['② 쟁점 파악',                 '각 모둠이 재판에서 무엇이 판결에 중요할지 쟁점을 정리합니다. 재판을 능동적으로 보게 하는 준비입니다.'],
-    ['③ 재판 보기 (대본 연기)',      '연기 3팀이 각자 자기 대사만 보며 순서대로 연기합니다. 전체 대본을 미리 확인하고, 나머지 모둠은 보며 판결문 메모를 하도록 안내하세요.'],
-    ['④ 판결문 작성·게시',          '모든 모둠이 판사가 되어 유죄/무죄를 정하고 판결문을 작성·게시합니다. 게시 현황을 아래에서 확인하세요.'],
-    ['⑤ 온라인 토의 (판결문 비교)',  '게시된 모둠별 판결문을 비교하며 의견을 나눕니다.'],
-    ['⑥ 기사 작성',                 '사법부의 역할과 이번 재판을 기사로 정리합니다. 교사 승인 → 여론판 게시.'],
-    ['⑦ 여론조사',                  '여러 모둠의 판결에 대한 시민 평가를 여론조사로 받습니다.'],
+    ['③ 재판하기',                  '연기팀은 대본을 연기하고, 나머지 학생은 토론도구에서 메모·모둠 판결문 작성·게시까지 진행합니다.'],
+    ['④ 판결문 토의',               '토론도구에서 게시된 모둠별 판결문을 비교하며 의견을 나눕니다.'],
+    ['⑤ 기사 작성',                 '사법부의 역할과 이번 재판을 기사로 정리합니다. 교사 승인 → 여론판 게시.'],
+    ['⑥ 여론조사',                  '여러 모둠의 판결에 대한 시민 평가를 여론조사로 받습니다.'],
   ]
   const DEFAULT_STAGE_INFO = isVerdict ? VERDICT_STAGE_INFO : ROLE_STAGE_INFO
 
@@ -221,11 +220,10 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
     ? [
         { idx: 0, label: '준비' },
         { idx: 1, label: '쟁점' },
-        { idx: 2, label: '재판보기' },
-        { idx: 3, label: '판결문' },
-        { idx: 4, label: '토의' },
-        { idx: 5, label: '기사' },
-        { idx: 6, label: '여론조사' },
+        { idx: 2, label: '재판하기' },
+        { idx: 3, label: '판결토의' },
+        { idx: 4, label: '기사' },
+        { idx: 5, label: '여론조사' },
       ]
     : [
         { idx: 0, label: '준비' },
@@ -952,7 +950,7 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
                 </div>
               </div>
               <p className="text-[10px] text-rose-600">
-                💡 사건·대본·연기 3팀을 모두 설정하면 ③ 재판 보기 단계에서 각 팀이 자기 대사를 화면에서 봅니다.
+                💡 사건·대본·연기 3팀을 모두 설정하면 ③ 재판하기 단계에서 각 팀이 자기 대사를 화면에서 봅니다.
               </p>
             </div>
           )}
@@ -1171,12 +1169,12 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
             </div>
           )}
 
-          {/* ════ 판결중심 재판보기(stage 2) — 대본·연기팀 점검 ════ */}
+          {/* ════ 판결중심 재판하기(stage 2) — 대본·연기팀 점검 ════ */}
           {isVerdict && stage === 2 && (
             <div className="pt-2 border-t border-rose-200/50 space-y-2">
-              <h4 className="text-xs font-bold text-rose-850">🎬 재판 보기 — 대본 연기 점검</h4>
+              <h4 className="text-xs font-bold text-rose-850">🎬 재판하기 — 대본·판결문 진행</h4>
               <p className="text-[11px] text-rose-700">
-                연기 3팀은 학생 화면에서 <b>각자 자기 대사만</b> 봅니다. 나머지 모둠은 보며 판결문 메모를 합니다.
+                연기 3팀은 각자 자기 대사를 연기하고, 나머지 모둠은 토론도구에서 판결문을 작성·게시합니다.
               </p>
               <div className="grid grid-cols-3 gap-1 text-[10px]">
                 {[
@@ -1304,8 +1302,8 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
             </div>
           )}
 
-          {/* ════ 판결중심 판결문 게시 현황(stage 3·4) ════ */}
-          {isVerdict && (stage === 3 || stage === 4) && (
+          {/* ════ 판결중심 판결문 게시 현황(stage 3: 판결문 토의) ════ */}
+          {isVerdict && stage === 3 && (
             <div className="pt-2 border-t border-rose-200/50 space-y-1.5">
               <h4 className="text-xs font-bold text-rose-850">📜 모둠별 판결문 게시 현황</h4>
               {(() => {

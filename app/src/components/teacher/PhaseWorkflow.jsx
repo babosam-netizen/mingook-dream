@@ -75,11 +75,10 @@ export const PHASE_STEPS = {
 const JUDICIAL_VERDICT_STEPS = [
   { id: 'verdict-prep',       session: '16차시', label: '판결 ① 준비 (사건 개요 + 팀 배정)',      hint: '사건 자료실에서 사건 개요를 함께 읽고, 교사가 연기 3팀(판사·검사·변호사)을 지정합니다. 나머지 모둠은 참관·판결문 작성팀입니다.', highlight: 'judicial', studentLabel: '판결 ① 사건 개요·팀 배정', stage: 0 },
   { id: 'verdict-issues',     session: '16차시', label: '  └ 판결 ② 쟁점 파악',                   hint: '재판을 능동적으로 보기 위해, 이 사건에서 무엇이 판결에 중요할지 모둠별로 쟁점을 정리합니다.',           highlight: 'judicial', studentLabel: '판결 ② 쟁점 파악',          stage: 1 },
-  { id: 'verdict-trial',      session: '17차시', label: '  └ 판결 ③ 재판 보기 (대본 연기)',        hint: '⬇️ 빠른 제어에서 대본을 송출하세요. 연기 3팀이 각자 자기 대사만 보며 공방을 연기하고, 나머지 모둠은 보며 판결문 메모를 합니다.', highlight: 'judicial', studentLabel: '판결 ③ 재판 보기',         stage: 2 },
-  { id: 'verdict-writing',    session: '17차시', label: '  └ 판결 ④ 판결문 작성·게시',             hint: '모든 모둠이 판사가 되어 모둠별 판결문을 작성하고 게시합니다. (연기한 3팀도 작성)',                       highlight: 'judicial', studentLabel: '판결 ④ 판결문 작성',        stage: 3 },
-  { id: 'verdict-discussion', session: '18차시', label: '  └ 판결 ⑤ 온라인 토의 (판결문 비교)',     hint: '게시된 다른 모둠 판결문을 읽고 근거·결론을 비교하며 의견을 나눕니다.',                                  highlight: 'judicial', studentLabel: '판결 ⑤ 온라인 토의',        stage: 4 },
-  { id: 'article3',           session: '18차시', label: '판결 ⑥ 기사 작성 — 사법부가 하는 일',     hint: '사법부의 역할과 이번 재판을 기사로 정리합니다. 작성 후 교사 승인 → 여론판 게시.',                       highlight: 'article',  studentLabel: '판결 ⑥ 기사 작성',          stage: 5 },
-  { id: 'poll4',              session: '18차시', label: '판결 ⑦ 여론조사 — 판결에 대한 평가',      hint: '여러 모둠의 판결에 대한 시민 평가를 여론조사로 받습니다.',                                              highlight: 'poll',     studentLabel: '판결 ⑦ 여론조사', stage: 6, showSummary: true },
+  { id: 'verdict-trial',      session: '17차시', label: '  └ 판결 ③ 재판하기 (대본 연기+판결문 작성)', hint: '⬇️ 빠른 제어에서 토론도구를 열어 대본 연기, 판사 메모, 모둠 판결문 작성·게시까지 진행합니다.', highlight: 'judicial', studentLabel: '판결 ③ 재판하기',         stage: 2 },
+  { id: 'verdict-discussion', session: '18차시', label: '  └ 판결 ④ 판결문 토의',                 hint: '토론도구에서 게시된 모둠별 판결문을 읽고 근거·결론이 어떻게 다른지 비교하며 토의합니다.',                  highlight: 'judicial', studentLabel: '판결 ④ 판결문 토의',        stage: 3 },
+  { id: 'article3',           session: '18차시', label: '판결 ⑤ 기사 작성 — 사법부가 하는 일',     hint: '사법부의 역할과 이번 재판을 기사로 정리합니다. 작성 후 교사 승인 → 여론판 게시.',                       highlight: 'article',  studentLabel: '판결 ⑤ 기사 작성',          stage: 4 },
+  { id: 'poll4',              session: '18차시', label: '판결 ⑥ 여론조사 — 판결에 대한 평가',      hint: '여러 모둠의 판결에 대한 시민 평가를 여론조사로 받습니다.',                                              highlight: 'poll',     studentLabel: '판결 ⑥ 여론조사', stage: 5, showSummary: true },
 ]
 
 // 사법 단계 앞부분(준비~여론조사 3-2) + 판결중심 사법 7단계

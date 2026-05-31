@@ -1122,7 +1122,7 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
                 )}
               </div>
               {/* 증거 TV 송출 */}
-              {judicialActiveCase?.evidence?.length > 0 && (
+              {activeCase?.evidence?.length > 0 && (
                 <div className="border border-amber-200 rounded-xl bg-amber-50 p-2.5">
                   <div className="flex items-center justify-between mb-1.5">
                     <p className="text-[10px] font-black text-amber-800">🗂️ 증거 TV 송출</p>
@@ -1131,7 +1131,7 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
                     )}
                   </div>
                   <div className="space-y-1">
-                    {judicialActiveCase.evidence.map((ev) => {
+                    {activeCase.evidence.map((ev) => {
                       const sideLabel = ev.side === 'prosecution' ? '🔴 검사' : ev.side === 'defense' ? '🔵 변호' : '🟣 공통'
                       const isOn = broadcastingEvidenceId === ev.id
                       return (

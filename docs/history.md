@@ -6,6 +6,21 @@
 
 ---
 
+## v1.2.325 — 사법부 증거 TV 송출 + 타이머 TV 전체화면 기본화 (2026-05-31 / [Claude])
+- **[기능]** `TeacherDebateControl`에 🗂️ 증거 TV 송출 패널 추가 — 모의재판 세션에서 증거 목록 버튼으로 `judicialPresentation` Firebase 경로에 송출, 같은 버튼 재클릭으로 종료.
+- **[기능]** `DebateTimerTVPage` 전면 개편 — 전체화면 타이머가 기본(토글 버튼 없음), 증거 송출 시 `z-[70]` 오버레이로 타이머 위에 표시(상단에 단계명+타이머 작게 실시간 표시).
+- **[버그픽스]** TV 창 새로 열 때 이전 증거 데이터 잔류 문제 — `firstSnapRef`로 첫 스냅샷 무시.
+- **[기능]** `JudicialCaseRoomButton` 컴포넌트 신규 — 사법부 ②~④ 단계 및 토론 도구에서 사건 자료실 모달로 열기.
+- **[기능]** `Phase3JudicialQuickPanel.startJudicialDebate()`에 `TRIAL_STAGES` 자동 초기화 추가 — 세션 생성 시 토론 단계가 비어있던 문제 해결.
+- **[기능]** `DebateTimer`에 `defaultFullscreen` prop 추가 — TV 페이지에서 닫기 버튼 숨김.
+
+## v1.2.322 — GitHub 공개 저장소 셋업 (2026-05-31 / [Claude])
+- **[인프라]** `~/class_democra_dev`를 git 루트로 초기화, `https://github.com/babosam-netizen/mingook-dream` 저장소에 첫 push.
+- **[보안]** `.gitignore` — `.env`, `node_modules`, `dist`, `docs/firebase-rules.json`, `.playwright-mcp`, `app/.claude` 제외.
+- **[문서]** `LICENSE` (CC BY-NC-SA 4.0), `README.md` (다른 선생님 배포 안내), `app/.env.example` (키 이름만), `docs/firebase-rules-sample.json` (uid 플레이스홀더) 추가.
+- **[운영]** 현재 수업은 NAS + 기존 Firebase 그대로 유지. GitHub은 백업 + 공개 공유 용도. Cloudflare 연결은 수업 종료 후로 보류.
+- **[주의]** `docs/`가 NAS(`/Volumes/web/class_democra/docs/`)와 개발폴더(`~/class_democra_dev/docs/`) 두 곳에 존재 — 문서 수정 시 개발폴더 쪽 수정해야 GitHub에 반영됨.
+
 ## v1.2.321 — Firebase Auth 도입 (교사 이메일/학생 익명) + 보안 규칙 강화 (2026-05-31 / [Claude])
 - **[보안]** `firebase.js`에 `getAuth` 추가, Auth 모듈 초기화.
 - **[보안]** `App.jsx`에 `onAuthStateChanged` + `signInAnonymously` 추가 — 앱 시작 시 자동 익명 로그인, `authReady` 상태로 Auth 완료 후 DB 구독 시작 (새로고침 1번 문제 해결).

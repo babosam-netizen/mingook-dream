@@ -3,7 +3,16 @@
 > 세션 진입 시 가장 먼저 읽는 문서. 토큰 만료로 새 AI 세션이 열려도 현재 상태와 필수 규칙을 즉시 회복할 수 있도록 최신 코드 상태를 요약한다.
 
 마지막 갱신: 2026-05-31
-현재 버전: **v1.2.321** (Firebase Auth 도입 — 교사 이메일/학생 익명 + 보안 규칙 강화)
+현재 버전: **v1.2.325** (사법부 증거 TV 송출 + GitHub 공개 저장소 셋업)
+
+## 3-0. 최근 완료: GitHub 공개 저장소 셋업 + 증거 TV 송출 (v1.2.322~325)
+
+- **GitHub 저장소**: `https://github.com/babosam-netizen/mingook-dream` (Public, CC BY-NC-SA 4.0)
+- **운영 구조**: NAS + 기존 Firebase로 수업 운영 / GitHub은 백업+공유 용도 / Cloudflare는 수업 후 보류
+- **docs/ 위치 주의**: NAS(`/Volumes/web/class_democra/docs/`)와 개발폴더(`~/class_democra_dev/docs/`) 두 곳 존재 — GitHub 반영은 개발폴더 수정 필요
+- **증거 TV 송출**: `TeacherDebateControl` 재판 세션에서 증거 목록 클릭 → `judicialPresentation` Firebase 경로 → `DebateTimerTVPage` z-[70] 오버레이로 표시
+- **타이머 TV**: `defaultFullscreen=true` prop으로 항상 전체화면, 닫기 버튼 없음
+- **`JudicialCaseRoomButton`**: 사법부 ②~④ 단계 + 토론 도구에서 사건 자료실 모달 열기
 
 ## 3-0. 최근 완료: Firebase Auth 도입 (v1.2.321)
 

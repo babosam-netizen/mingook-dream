@@ -423,6 +423,65 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
     return bySide
   }
 
+  function buildVerdictSessionSeedPatch(session = {}) {
+    const judgeIds = getJudicialSideStudentIds('judge', branchConfig?.judicial, groups)
+    const proIds = getJudicialSideStudentIds('prosecution', branchConfig?.judicial, groups)
+    const conIds = getJudicialSideStudentIds('defense', branchConfig?.judicial, groups)
+    const judgeStudents = {}
+    judgeIds.forEach((id) => { judgeStudents[id] = true })
+    const proStudents = {}
+    proIds.forEach((id) => { proStudents[id] = true })
+    const conStudents = {}
+    conIds.forEach((id) => { conStudents[id] = true })
+
+    const judgeSet = new Set(judgeIds)
+    const proSet = new Set(proIds)
+    const conSet = new Set(conIds)
+    const evaluators = {}
+    for (const [, g] of Object.entries(groups || {})) {
+      for (const sid of Object.keys(g?.members || {})) {
+        if (!judgeSet.has(sid) && !proSet.has(sid) && !conSet.has(sid)) evaluators[sid] = true
+      }
+    }
+
+    const seededScripts = buildVerdictDebateScripts()
+    const currentScripts = session?.scripts || {}
+    const scripts = { ...currentScripts }
+    Object.entries(seededScripts).forEach(([side, script]) => {
+      if (!String(currentScripts?.[side]?.body || '').trim()) scripts[side] = script
+    })
+
+    return {
+      activeTools: Array.from(new Set([...(session?.activeTools || []), 'debateScript', 'debateTimer'])),
+      teacherTab: 'pre',
+      scripts,
+      judicialTrialScript: Array.isArray(activeCase?.trialScript) ? activeCase.trialScript : [],
+      proStudents,
+      conStudents,
+      evaluators,
+      extraSides: {
+        ...(session?.extraSides || {}),
+        judge: { label: '판사', name: '판사', students: judgeStudents },
+      },
+      sideLabelOverrides: {
+        ...(session?.sideLabelOverrides || {}),
+        judge: session?.sideLabelOverrides?.judge || '판사',
+      },
+    }
+  }
+
+  async function ensureVerdictDebateScripts(session = trialDebate) {
+    if (!roomCode || !session?.id) return false
+    if (!isVerdict) return true
+    const hasTrialScript = Array.isArray(activeCase?.trialScript) && activeCase.trialScript.length > 0
+    if (!hasTrialScript) {
+      alert('적용된 사건에 trialScript 대본이 없습니다.\n준비 단계에서 사건을 다시 만들거나 대본이 포함된 JSON을 적용해 주세요.')
+      return false
+    }
+    await updateAt(roomCode, `debateSessions/${session.id}`, buildVerdictSessionSeedPatch(session))
+    return true
+  }
+
   const appliedCasePanel = (
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-2">
       {prepTitle(2, '적용된 사건', '학생들이 볼 사건 내용, 쟁점, 증거, 증인을 한 번에 확인합니다.')}
@@ -512,6 +571,14 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
     if (!roomCode) return
     // ★ npcCaseId 조건 제거 — branchConfig activeCase(사건만들기)로 설정한 사건이 있으면 바로 생성 가능
     if (trialDebate) {
+      if (isVerdict) {
+        const ok = await ensureVerdictDebateScripts(trialDebate)
+        if (ok) {
+          alert('이미 진행 중인 재판 세션에 AI 대본을 적용했습니다.\n토론 도구의 [토론 전] 탭에서 역할별 대본을 확인하세요.')
+          if (typeof onOpenDebateTool === 'function') onOpenDebateTool()
+        }
+        return
+      }
       alert('이미 진행 중인 모의재판 토론 세션이 있습니다.\n토론 도구에서 확인하세요.')
       return
     }
@@ -1168,12 +1235,27 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
                   🎙️ 세션 생성
                 </button>
                 <button
-                  onClick={onOpenDebateTool}
+                  onClick={async () => {
+                    const ok = await ensureVerdictDebateScripts(trialDebate)
+                    if (ok && typeof onOpenDebateTool === 'function') onOpenDebateTool()
+                  }}
                   disabled={!trialDebate || !onOpenDebateTool}
                   className="text-[11px] font-bold px-2 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  🎙️ 토론 도구 열기
+                  🎙️ 대본 넣고 열기
                 </button>
+                {trialDebate && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await ensureVerdictDebateScripts(trialDebate)
+                      if (ok) alert('AI 대본을 현재 재판 세션에 다시 적용했습니다.\n토론 도구의 [토론 전] 탭을 확인하세요.')
+                    }}
+                    className="text-[11px] font-bold px-2 py-1.5 rounded-lg bg-white hover:bg-amber-50 text-amber-700 border border-amber-200"
+                  >
+                    📝 AI 대본 적용
+                  </button>
+                )}
                 <button
                   onClick={openTrialDebateBoard}
                   disabled={!trialDebate}

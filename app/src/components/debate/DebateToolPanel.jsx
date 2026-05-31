@@ -224,6 +224,63 @@ function DebateRefPanel() {
   )
 }
 
+function VerdictTrialMemo({ session, myStudentId, myNickname, mySideId }) {
+  const roomCode = useGameStore((s) => s.roomCode)
+  const existing = session?.verdictMemos?.[myStudentId]?.body || ''
+  const [body, setBody] = useState(existing)
+  const saveTimerRef = useRef(null)
+  const isActingSide = ['judge', 'pro', 'con'].includes(mySideId)
+
+  const scheduleSave = (nextBody) => {
+    setBody(nextBody)
+    if (!roomCode || !session?.id || !myStudentId) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      updateAt(roomCode, `debateSessions/${session.id}/verdictMemos/${myStudentId}`, {
+        body: nextBody,
+        studentId: myStudentId,
+        studentName: myNickname || '',
+        sideId: mySideId || 'evaluator',
+      }).catch(() => {})
+    }, 700)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
+  return (
+    <section className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-black text-amber-900">
+            {isActingSide ? '🧑‍⚖️ 판결문 참고 메모' : '🧑‍⚖️ 참관 판사 메모'}
+          </h3>
+          <p className="text-[11px] text-amber-700 mt-0.5">
+            재판을 보며 사실관계, 쟁점, 증거, 판단 근거를 적어두세요. 입력 내용은 자동저장됩니다.
+          </p>
+        </div>
+        <span className="shrink-0 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+          자동저장
+        </span>
+      </div>
+      <textarea
+        value={body}
+        onChange={(e) => scheduleSave(e.target.value)}
+        rows={6}
+        placeholder={`예)
+사실관계: 피고인이 한 행동은 무엇인가?
+쟁점: 우리 반 법의 어떤 의무를 어겼는가?
+증거: 어떤 증거가 가장 중요했는가?
+판단: 유죄/무죄 중 어느 쪽 근거가 더 강한가?`}
+        className="w-full rounded-xl border-2 border-amber-100 bg-white px-3 py-2 text-sm leading-relaxed text-slate-800 focus:outline-none focus:border-amber-400 resize-y"
+      />
+    </section>
+  )
+}
+
 /* ── 여론판 기사 참고 인라인 패널 ── */
 function ArticleRefPanel() {
   const roomCode = useGameStore((s) => s.roomCode)
@@ -291,6 +348,7 @@ function DebateToolPanel() {
   const role = useGameStore((s) => s.role)
   const roomCode = useGameStore((s) => s.roomCode)
   const myStudentId = useGameStore((s) => s.myStudentId)
+  const myNickname = useGameStore((s) => s.myNickname)
   const debateEnabled = useGameStore((s) => s.config?.debateToolEnabled !== false)
   // 선거 투표 상태 — vote 단계에서 투표 중/종료 시에만 억제 (다른 단계에서는 억제 안 함)
   const electionStatus = useGameStore((s) => s.electionStatus)
@@ -326,6 +384,9 @@ const lastSessionIdRef = useRef(null)
   const showScript = activeTools.includes('debateScript')
   const showTimer = activeTools.includes('debateTimer')
   const showPostPoll = activeTools.includes('stancePollPost')
+  const isVerdictTrialSession = session?.type === 'trial' && (
+    Array.isArray(session?.judicialTrialScript) || !!session?.extraSides?.judge
+  )
   const prePollOpen = !!stancePolls?.pre?.isOpen
   const postPollOpen = !!stancePolls?.post?.isOpen
   const isPublic = !!session?.prepCardsPublic
@@ -773,6 +834,16 @@ const lastSessionIdRef = useRef(null)
                         roundInfo={timerRoundInfo}
                       />
                       <DebateTimer timer={timer} topic={session.topic} />
+
+                      {isVerdictTrialSession && myStudentId && (
+                        <VerdictTrialMemo
+                          key={`${session.id}:${myStudentId}`}
+                          session={session}
+                          myStudentId={myStudentId}
+                          myNickname={myNickname}
+                          mySideId={mySideId}
+                        />
+                      )}
 
                       {/* 프롬프트 (대본) */}
                       {showScript && (

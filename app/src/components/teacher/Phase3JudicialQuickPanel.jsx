@@ -466,6 +466,7 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
       sideLabelOverrides: {
         ...(session?.sideLabelOverrides || {}),
         judge: session?.sideLabelOverrides?.judge || '판사',
+        evaluator: session?.sideLabelOverrides?.evaluator || '참관 판사',
       },
     }
   }
@@ -660,7 +661,7 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
         ...(isVerdict ? { judge: draft.chairLabel || '판사' } : {}),
         pro: draft.proLabel || proGroupNames,
         con: draft.conLabel || conGroupNames,
-        evaluator: draft.evaluatorLabel || '배심원단',
+        evaluator: draft.evaluatorLabel || (isVerdict ? '참관 판사' : '배심원단'),
         chair: draft.chairLabel || '재판장',
       },
     })

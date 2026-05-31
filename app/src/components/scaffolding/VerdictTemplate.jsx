@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
-import { pushUnder } from '../../lib/rtdb-helpers'
+import { pushUnder, subscribe } from '../../lib/rtdb-helpers'
 import PlaceholderField, { isFieldComplete } from './PlaceholderField'
 import ResearchReferencePanel from '../research/ResearchReferencePanel'
 
@@ -15,6 +15,7 @@ import ResearchReferencePanel from '../research/ResearchReferencePanel'
  */
 function VerdictTemplate({ caseId, groupId, decision, dataPath = 'verdicts' }) {
   const roomCode = useGameStore((s) => s.roomCode)
+  const groups = useGameStore((s) => s.groups)
   const sections = useGameStore((s) => s.config?.templates?.verdict?.sections) || []
 
   const [values, setValues] = useState({})
@@ -84,6 +85,8 @@ function VerdictTemplate({ caseId, groupId, decision, dataPath = 'verdicts' }) {
         compact
       />
 
+      <VerdictMemoReference caseId={caseId} groupId={groupId} groups={groups} />
+
       {sections.map((s) => (
         <PlaceholderField
           key={s.id}
@@ -113,6 +116,48 @@ function VerdictTemplate({ caseId, groupId, decision, dataPath = 'verdicts' }) {
         {busy ? '제출 중...' : allComplete ? '판결문 게시' : '⚠ 빈칸을 모두 채워 주세요'}
       </button>
     </form>
+  )
+}
+
+function VerdictMemoReference({ caseId, groupId, groups }) {
+  const roomCode = useGameStore((s) => s.roomCode)
+  const [sessions, setSessions] = useState({})
+
+  useEffect(() => {
+    if (!roomCode || !caseId) return
+    const unsub = subscribe(roomCode, 'debateSessions', (d) => setSessions(d || {}))
+    return () => unsub?.()
+  }, [roomCode, caseId])
+
+  const memos = useMemo(() => {
+    const memberIds = new Set(Object.keys(groups?.[groupId]?.members || {}))
+    const rows = []
+    Object.values(sessions || {}).forEach((session) => {
+      if (session?.relatedCaseId !== caseId) return
+      Object.values(session?.verdictMemos || {}).forEach((memo) => {
+        if (!memo?.body || !memberIds.has(memo.studentId)) return
+        rows.push(memo)
+      })
+    })
+    return rows
+  }, [sessions, caseId, groupId, groups])
+
+  if (memos.length === 0) return null
+
+  return (
+    <section className="rounded-xl border-2 border-amber-200 bg-amber-50 p-3 space-y-2">
+      <h4 className="text-sm font-black text-amber-900">🧑‍⚖️ 재판 중 작성한 판사 메모</h4>
+      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+        {memos.map((memo, i) => (
+          <div key={`${memo.studentId}-${i}`} className="rounded-lg bg-white border border-amber-100 p-2">
+            <p className="text-[10px] font-bold text-amber-700 mb-1">
+              {memo.studentName || memo.studentId}
+            </p>
+            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{memo.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

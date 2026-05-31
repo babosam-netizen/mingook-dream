@@ -1126,16 +1126,16 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
                 <div className="border border-amber-200 rounded-xl bg-amber-50 p-2.5">
                   <div className="flex items-center justify-between mb-1.5">
                     <p className="text-[10px] font-black text-amber-800">🗂️ 증거 TV 송출</p>
-                    {broadcastingEvidenceId && (
-                      <button onClick={stopEvidenceBroadcast} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-full font-bold hover:bg-red-600">■ 종료</button>
+                    {presentation?.evidenceId && (
+                      <button onClick={clearPresentation} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-full font-bold hover:bg-red-600">■ 종료</button>
                     )}
                   </div>
                   <div className="space-y-1">
                     {activeCase.evidence.map((ev) => {
                       const sideLabel = ev.side === 'prosecution' ? '🔴 검사' : ev.side === 'defense' ? '🔵 변호' : '🟣 공통'
-                      const isOn = broadcastingEvidenceId === ev.id
+                      const isOn = presentation?.evidenceId === ev.id
                       return (
-                        <button key={ev.id} onClick={() => broadcastEvidence(ev)}
+                        <button key={ev.id} onClick={() => isOn ? clearPresentation() : presentEvidence(ev)}
                           className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded-lg border text-[10px] transition-all ${isOn ? 'bg-amber-400 border-amber-500 text-white font-black' : 'bg-white border-amber-200 text-slate-700 hover:bg-amber-100'}`}
                         >
                           <span className="shrink-0">{sideLabel}</span>

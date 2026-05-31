@@ -8,7 +8,7 @@
 
 > 🔗 **라이브 데모**: [mingook-dream.pages.dev](https://mingook-dream.pages.dev)  
 > 👩‍🏫 교사 체험 암호: `demos123`
-
+> 포크가 여의치 않은 선생님들께서는  (서버가 허락하는한) 수업에 라이브데모를 사용하셔도 좋습니다.
 ---
 
 ## 수업 구성

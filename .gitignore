@@ -17,6 +17,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Firebase 보안 규칙 (교사 uid 포함 — 공개 금지)
+docs/firebase-rules.json
+
 # Claude Code 내부 파일
 .playwright-mcp/
 app/.claude/

@@ -16,6 +16,20 @@ const DEFAULT_STANCE_OPTIONS = [
   { id: 'neutral', label: '중립 (판단 유예)' },
 ]
 
+const VERDICT_SCRIPT_SPEAKERS_BY_SIDE = {
+  judge: ['judge'],
+  pro: ['prosecution', 'witness'],
+  con: ['defense', 'defendant'],
+}
+
+const VERDICT_SCRIPT_SPEAKER_LABEL = {
+  judge: '판사',
+  prosecution: '검사',
+  defense: '변호인',
+  witness: '증인',
+  defendant: '피고인',
+}
+
 function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
   const roomCode = useGameStore((s) => s.roomCode)
   const groups = useGameStore((s) => s.groups)
@@ -309,7 +323,6 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
       imageUrl: ev.imageUrl || '',
       imageHint: ev.imageHint || '',
       sampleContent: ev.sampleContent || '',
-      presentedAt: Date.now(),
     })
   }
 
@@ -365,6 +378,49 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
         </button>
       </div>
     )
+  }
+
+  function formatTrialScriptLines(lines, title) {
+    if (!lines.length) return ''
+    return [
+      `[${title}]`,
+      'AI가 작성한 재판 대본입니다. 번호 순서에 맞춰 읽고, 괄호 안 행동은 자연스럽게 연기하세요.',
+      '',
+      ...lines.map((line) => {
+        const order = line.order ? `${line.order}. ` : ''
+        const scene = line.scene ? `[${line.scene}] ` : ''
+        const speaker = VERDICT_SCRIPT_SPEAKER_LABEL[line.speaker] || line.speaker || '역할'
+        return `${order}${scene}${speaker}: ${line.text || ''}`.trim()
+      }),
+    ].join('\n')
+  }
+
+  function buildVerdictDebateScripts() {
+    const script = Array.isArray(activeCase?.trialScript)
+      ? [...activeCase.trialScript].sort((a, b) => (a.order || 0) - (b.order || 0))
+      : []
+    if (script.length === 0) return {}
+
+    const bySide = Object.fromEntries(
+      Object.entries(VERDICT_SCRIPT_SPEAKERS_BY_SIDE).map(([side, speakers]) => {
+        const lines = script.filter((line) => speakers.includes(line?.speaker))
+        const title = side === 'judge' ? '판사팀 대본'
+          : side === 'pro' ? '검사팀 대본'
+          : '변호팀 대본'
+        return [side, {
+          body: formatTrialScriptLines(lines, title),
+          lastAuthor: 'AI 재판 대본',
+          source: 'activeCase.trialScript',
+        }]
+      }),
+    )
+
+    bySide.evaluator = {
+      body: formatTrialScriptLines(script, '참관·판결문 작성팀용 전체 대본'),
+      lastAuthor: 'AI 재판 대본',
+      source: 'activeCase.trialScript',
+    }
+    return bySide
   }
 
   const appliedCasePanel = (
@@ -471,20 +527,26 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
     }
 
     // 검사/변호 진영 학생 — 모둠별/개인별 배정 모두 반영
+    const judgeIds = isVerdict
+      ? getJudicialSideStudentIds('judge', branchConfig?.judicial, groups)
+      : []
     const proIds = getJudicialSideStudentIds('prosecution', branchConfig?.judicial, groups)
     const conIds = getJudicialSideStudentIds('defense', branchConfig?.judicial, groups)
+    const judgeStudents = {}
+    judgeIds.forEach((id) => { judgeStudents[id] = true })
     const proStudents = {}
     proIds.forEach((id) => { proStudents[id] = true })
     const conStudents = {}
     conIds.forEach((id) => { conStudents[id] = true })
 
     // 그 외 전원 = 배심원(평가단)
+    const judgeSet = new Set(judgeIds)
     const proSet = new Set(proIds)
     const conSet = new Set(conIds)
     const evaluators = {}
     for (const [, g] of Object.entries(groups || {})) {
       for (const sid of Object.keys(g?.members || {})) {
-        if (!proSet.has(sid) && !conSet.has(sid)) evaluators[sid] = true
+        if (!judgeSet.has(sid) && !proSet.has(sid) && !conSet.has(sid)) evaluators[sid] = true
       }
     }
 
@@ -498,6 +560,7 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
     const caseTitle = activeCase?.title || '모의재판'
     // 임시저장된 준비안이 있으면 우선 적용
     const draft = trialPrepDraft || {}
+    const seededScripts = isVerdict ? buildVerdictDebateScripts() : {}
     const sessionId = await pushUnder(roomCode, 'debateSessions', {
       title: `모의재판: ${caseTitle}`,
       topic: draft.topic || `'${caseTitle}'에 대한 검사 및 변호인의 토론`,
@@ -505,21 +568,29 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
       type: 'trial', // ⚖️ 국민참여재판 — 검사/변호인/배심원/재판장 라벨 자동 적용 (DEBATE_SIDE_LABELS.trial)
       chairId: draft.chairId || '',
       chairName: draft.chairName || '재판부 (판사)',
-      // 판결중심: 타이머만 사용 / 역할중심: 전체 도구
+      // 판결중심: AI 재판 대본 + 타이머 / 역할중심: 전체 도구
       activeTools: isVerdict
-        ? ['debateTimer']
+        ? ['debateScript', 'debateTimer']
         : ['stancePollPre', 'prepCard', 'debateScript', 'debateTimer'],
       currentDebateStage: 0,
       isActive: true,
       isPopupOpen: true,
-      // 판결중심은 토론 중으로 바로 진입 / 역할중심은 토론 전부터 시작
-      teacherTab: isVerdict ? 'mid' : 'pre',
+      // 판결중심은 토론 전 대본 확인 후 교사가 토론 중 탭으로 넘겨 진행
+      teacherTab: 'pre',
       relatedCaseId: activeCaseRelatedId,  // ★ branchConfig 케이스 ID 사용
       sourceStepId: 'judicial-trial',
       proStudents,
       conStudents,
       evaluators,
+      ...(isVerdict ? {
+        scripts: seededScripts,
+        judicialTrialScript: Array.isArray(activeCase?.trialScript) ? activeCase.trialScript : [],
+        extraSides: {
+          judge: { label: '판사', name: '판사', students: judgeStudents },
+        },
+      } : {}),
       sideLabelOverrides: {
+        ...(isVerdict ? { judge: draft.chairLabel || '판사' } : {}),
         pro: draft.proLabel || proGroupNames,
         con: draft.conLabel || conGroupNames,
         evaluator: draft.evaluatorLabel || '배심원단',

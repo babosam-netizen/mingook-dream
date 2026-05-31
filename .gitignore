@@ -1,0 +1,26 @@
+# 환경변수 (Firebase 키 등 — 절대 올리면 안 됨)
+.env
+.env.local
+.env.*.local
+
+# 의존성
+app/node_modules/
+
+# 빌드 결과물 (Cloudflare가 직접 빌드하므로 불필요)
+app/dist/
+
+# 시스템
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code 내부 파일
+.playwright-mcp/
+app/.claude/
+
+# 로그
+*.log
+npm-debug.log*

@@ -1,0 +1,232 @@
+{
+  "rules": {
+
+    ".read": false,
+    ".write": false,
+
+    "roomsIndex": {
+      ".read": true,
+      ".write": true,
+      "$roomCode": {
+        ".validate": "newData.hasChildren(['className', 'createdAt'])"
+      }
+    },
+
+    "rooms": {
+      ".read": false,
+      ".write": false,
+      "$roomCode": {
+        ".read": true,
+        ".write": true,
+
+        "className": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 50"
+        },
+
+        "currentPhase": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 4"
+        },
+
+        "students": {
+          "$studentId": {
+            "number": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 60"
+            },
+            "nickname": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            }
+          }
+        },
+
+        "comments": {
+          "$commentId": {
+            ".validate": "newData.hasChildren(['body', 'authorStudentId', 'targetType', 'targetId'])",
+            "body": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1000"
+            }
+          }
+        },
+
+        "articles": {
+          "$articleId": {
+            ".validate": "newData.hasChildren(['headline', 'body', 'authorGroupId'])",
+            "headline": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+            },
+            "body": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 3000"
+            }
+          }
+        },
+
+        "debateSessions": {
+          "$sessionId": {
+            ".validate": "newData.hasChildren(['title', 'topic', 'isActive'])",
+            "title": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+            },
+            "topic": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 300"
+            },
+            "isActive": {
+              ".validate": "newData.isBoolean()"
+            },
+            "prepCards": {
+              "$cardId": {
+                ".validate": "newData.hasChildren(['studentId', 'stance', 'mainClaim', 'evidence', 'counterRebuttal'])",
+                "mainClaim": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+                },
+                "evidence": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+                },
+                "counterRebuttal": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+                }
+              }
+            },
+            "stancePoll": {
+              "$pollId": {
+                "votes": {
+                  "$studentId": {
+                    ".validate": "newData.hasChildren(['option', 'votedAt'])",
+                    "option": {
+                      ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+                    }
+                  }
+                }
+              }
+            },
+            "debateTimer": {
+              "currentStage": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
+              },
+              "isRunning": {
+                ".validate": "newData.isBoolean()"
+              },
+              "isPaused": {
+                ".validate": "newData.isBoolean()"
+              }
+            },
+            "speechEvals": {
+              "$evalId": {
+                ".validate": "newData.hasChildren(['targetLabel', 'isOpen', 'openedAt'])",
+                "targetLabel": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+                },
+                "isOpen": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "results": {
+                  "$studentId": {
+                    ".validate": "newData.hasChildren(['scores', 'comment', 'submittedAt'])",
+                    "comment": {
+                      ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        "petitions": {
+          "$petitionId": {
+            ".validate": "newData.hasChildren(['title', 'claim', 'evidence', 'mediaUrl', 'mediaSummary', 'studentId', 'studentName', 'prefixTag', 'status'])",
+            "title": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            },
+            "claim": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200"
+            },
+            "evidence": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200"
+            },
+            "mediaUrl": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500"
+            },
+            "mediaSummary": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+            },
+            "prefixTag": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+            },
+            "status": {
+              ".validate": "newData.isString() && (newData.val() == 'pending' || newData.val() == 'approved' || newData.val() == 'rejected')"
+            },
+            "likeCount": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            }
+          }
+        },
+
+        "reflections": {
+          "$reflectionId": {
+            ".validate": "newData.hasChildren(['body', 'authorStudentId'])",
+            "body": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 2000"
+            }
+          }
+        },
+
+        "bills": {
+          "$billId": {
+            ".validate": "newData.hasChildren(['title', 'proposerGroupId'])",
+            "title": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+            },
+            "preferences": {
+              "$studentId": {
+                ".validate": "newData.hasChild('liked') && newData.child('liked').isBoolean()"
+              }
+            },
+            "finalVotes": {
+              "$studentId": {
+                ".validate": "newData.hasChild('choice') && (newData.child('choice').val() == 'pro' || newData.child('choice').val() == 'con' || newData.child('choice').val() == 'abstain')"
+              }
+            }
+          }
+        },
+
+        "billBoard": {
+          ".validate": "newData.hasChildren(['active'])",
+          "active": {
+            ".validate": "newData.isBoolean()"
+          }
+        },
+
+        "polls": {
+          "$pollId": {
+            "votes": {
+              "$studentId": {
+                ".validate": "newData.hasChild('optionId')"
+              }
+            }
+          }
+        },
+
+        "electionVotes": {
+          "$studentId": {
+            ".validate": "newData.hasChild('candidateGroupId')"
+          }
+        },
+
+        "billVotes": {
+          "$billId": {
+            "$studentId": {
+              ".validate": "newData.hasChild('choice')"
+            }
+          }
+        },
+
+        "juryVotes": {
+          "$caseId": {
+            "$studentId": {
+              ".validate": "newData.hasChild('choice')"
+            }
+          }
+        }
+      }
+    }
+  }
+}

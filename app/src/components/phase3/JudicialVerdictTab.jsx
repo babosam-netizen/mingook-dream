@@ -1,0 +1,531 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import useGameStore from '../../store/gameStore'
+import { subscribe, setAt } from '../../lib/rtdb-helpers'
+import { useWorkflow } from '../../lib/use-workflow'
+import CommentList from '../phase1/CommentList'
+import StanceComments from '../phase2/StanceComments'
+import VerdictTemplate from '../scaffolding/VerdictTemplate'
+import JudicialCaseRoom from './JudicialCaseRoom'
+import BranchUnitBanner from './BranchUnitBanner'
+import ArticleSection from '../news/ArticleSection'
+import PollFeed from '../shared/PollFeed'
+import { getJudicialAssignmentSummary, getStudentJudicialSide } from '../../lib/judicial-teams'
+
+// 연기 3팀이 화면에서 보는 자기 대사(speaker) 매핑.
+// 판결중심에서는 판사·검사·변호사 3팀만 연기하므로, 증인·피고인 대사는 양측에 나눠 배정한다.
+const SCRIPT_SPEAKERS_BY_SIDE = {
+  judge:       ['judge'],
+  prosecution: ['prosecution', 'witness'],
+  defense:     ['defense', 'defendant'],
+}
+const SPEAKER_LABEL = {
+  judge: '⚖️ 판사', prosecution: '👨‍💼 검사', defense: '🛡️ 변호인', witness: '👤 증인', defendant: '🙍 피고인',
+}
+const ACTING_META = {
+  judge:       { label: '⚖️ 판사팀',   color: 'border-slate-300 bg-slate-50',  text: 'text-slate-800' },
+  prosecution: { label: '👨‍💼 검사팀',  color: 'border-red-200 bg-red-50',      text: 'text-red-800'   },
+  defense:     { label: '🛡️ 변호사팀', color: 'border-sky-200 bg-sky-50',      text: 'text-sky-800'   },
+}
+
+/**
+ * JudicialVerdictTab — 학생용 사법부 '판결중심(시나리오)' 모드 탭 (전원 판사).
+ *
+ * 워크플로 step → stage:
+ *   verdict-prep       (0) ① 준비 — 사건 개요 파악 + 팀 배정 확인
+ *   verdict-issues     (1) ② 쟁점 파악 — 모둠별 쟁점 메모
+ *   verdict-trial      (2) ③ 재판 보기 — 연기 3팀만 자기 대사 노출, 나머지는 참관·메모
+ *   verdict-writing    (3) ④ 판결문 작성·게시 — 전 모둠이 판결문 작성
+ *   verdict-discussion (4) ⑤ 온라인 토의 — 게시된 판결문 비교
+ *   article3           (5) ⑥ 기사 작성
+ *   poll4              (6) ⑦ 여론조사
+ */
+function JudicialVerdictTab({ previewMode = false }) {
+  const role        = useGameStore((s) => s.role)
+  const roomCode    = useGameStore((s) => s.roomCode)
+  const myStudentId = useGameStore((s) => s.myStudentId)
+  const groups      = useGameStore((s) => s.groups)
+  const students    = useGameStore((s) => s.students)
+  const branchConfig = useGameStore((s) => s.config?.branchConfig)
+
+  const judicialCaseId = branchConfig?.judicial?.activeCaseId || 'judicial-default'
+  const activeCase     = branchConfig?.judicial?.activeCase || null
+  const trialScript = useMemo(
+    () => Array.isArray(activeCase?.trialScript) ? activeCase.trialScript : [],
+    [activeCase],
+  )
+  const assignmentSummary = useMemo(
+    () => getJudicialAssignmentSummary(branchConfig?.judicial, groups, students, ['judge', 'prosecution', 'defense']),
+    [branchConfig, groups, students],
+  )
+
+  // ─── 워크플로 단계 게이팅 ──────────────────────────────────────────────
+  const wf = useWorkflow()
+  const stepId = wf.currentStep?.id
+  const STAGE_OF_STEP = {
+    core: 0,
+    'verdict-prep':       0,
+    'verdict-issues':     1,
+    'verdict-trial':      2,
+    'verdict-writing':    3,
+    'verdict-discussion': 4,
+    article3:             5,
+    poll4:                6,
+  }
+  const knownStage = STAGE_OF_STEP[stepId]
+  const isKnown    = knownStage !== undefined
+  const showAll    = previewMode || !isKnown
+
+  const modeFor = (stages) => {
+    if (showAll) return 'active'
+    if (stages.includes(knownStage)) return 'active'
+    if (stages.every((s) => s < knownStage)) return 'past'
+    return 'hidden'
+  }
+  const prepMode       = modeFor([0])
+  const issuesMode     = modeFor([1])
+  const trialMode      = modeFor([2])
+  const writingMode    = modeFor([3])
+  const discussionMode = modeFor([4])
+  const articleMode    = modeFor([5])
+  const pollMode       = modeFor([6])
+
+  const prepRef       = useRef(null)
+  const issuesRef     = useRef(null)
+  const trialRef      = useRef(null)
+  const writingRef    = useRef(null)
+  const discussionRef = useRef(null)
+  const articleRef    = useRef(null)
+  const pollRef       = useRef(null)
+
+  useEffect(() => {
+    if (previewMode || !isKnown) return
+    const refMap = [prepRef, issuesRef, trialRef, writingRef, discussionRef, articleRef, pollRef]
+    const target = refMap[knownStage]?.current
+    if (!target) return
+    const t = setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+    return () => clearTimeout(t)
+  }, [stepId, previewMode, isKnown, knownStage])
+
+  const pastClass   = 'opacity-50 pointer-events-none select-none [filter:blur(1.8px)_grayscale(40%)]'
+  const sectionWrap = (mode) => `transition-all duration-300 ${mode === 'past' ? pastClass : ''}`
+
+  // ─── Firebase 구독 ─────────────────────────────────────────────────────
+  const [verdicts, setVerdicts] = useState({})
+  const [issues,   setIssues]   = useState({})
+
+  useEffect(() => {
+    if (!roomCode || !judicialCaseId) return
+    const u = subscribe(roomCode, `verdicts/${judicialCaseId}`, (d) => setVerdicts(d || {}))
+    return () => u?.()
+  }, [roomCode, judicialCaseId])
+
+  useEffect(() => {
+    if (!roomCode || !judicialCaseId) return
+    const u = subscribe(roomCode, `judicialIssues/${judicialCaseId}`, (d) => setIssues(d || {}))
+    return () => u?.()
+  }, [roomCode, judicialCaseId])
+
+  // ─── 내 모둠 / 팀 ───────────────────────────────────────────────────────
+  const myGroupId = useMemo(() => {
+    if (!myStudentId) return null
+    for (const [gid, g] of Object.entries(groups || {})) {
+      if (g?.members?.[myStudentId]) return gid
+    }
+    return null
+  }, [groups, myStudentId])
+
+  // 연기팀 판정 — 모둠별/개인별 배정 모두 반영. 판사·검사·변호만 연기팀, 그 외는 참관·판결문 작성팀
+  const myActingSide = useMemo(() => {
+    const side = getStudentJudicialSide(myStudentId, branchConfig?.judicial, groups)
+    return (side === 'judge' || side === 'prosecution' || side === 'defense') ? side : null
+  }, [branchConfig, groups, myStudentId])
+
+  // ── ② 쟁점 메모 ─────────────────────────────────────────────────────────
+  const myIssue = (myGroupId && issues[myGroupId]?.body) || ''
+  const [issueDraft, setIssueDraft] = useState('')
+  const [issueSaved, setIssueSaved] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setIssueDraft(myIssue) }, [myIssue])
+  const saveIssue = async () => {
+    if (!myGroupId) return
+    await setAt(roomCode, `judicialIssues/${judicialCaseId}/${myGroupId}`, {
+      body: issueDraft, groupId: myGroupId, at: Date.now(),
+    })
+    setIssueSaved(true)
+    setTimeout(() => setIssueSaved(false), 2000)
+  }
+
+  // ── ④ 판결문 결정 토글(모둠별) ───────────────────────────────────────────
+  const [decisionChoice, setDecisionChoice] = useState('notGuilty')
+
+  // 게시된 판결문 (모둠별 최신 1건) — ④/⑤에서 사용
+  const postedVerdicts = useMemo(() => {
+    const byGroup = {}
+    for (const [vid, v] of Object.entries(verdicts || {})) {
+      if (!v || !v.body) continue
+      const gid = v.judgeGroupId || v.groupId
+      if (!gid) continue
+      const prev = byGroup[gid]
+      if (!prev || (v.createdAt || 0) > (prev.createdAt || prev.submittedAt || 0)) {
+        byGroup[gid] = { ...v, _vid: vid }
+      }
+    }
+    return byGroup
+  }, [verdicts])
+
+  // 연기팀 라인 (내 팀 speaker만)
+  const myScriptLines = useMemo(() => {
+    if (!myActingSide) return []
+    const allow = SCRIPT_SPEAKERS_BY_SIDE[myActingSide] || []
+    return [...trialScript]
+      .filter((l) => allow.includes(l?.speaker))
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+  }, [trialScript, myActingSide])
+
+  const fullScript = useMemo(
+    () => [...trialScript].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    [trialScript],
+  )
+
+  return (
+    <div className="space-y-4">
+      {/* 모드 안내 배너 */}
+      <div className="bg-gradient-to-r from-rose-50 to-amber-50 border-2 border-rose-200 rounded-xl px-4 py-2.5">
+        <p className="text-sm font-bold text-rose-800">⚖️ 판결중심 모드 (시나리오) — 우리 모두가 판사</p>
+        <p className="text-[11px] text-rose-600 mt-0.5">
+          재판을 참관하고, 모둠별로 판결문을 작성해 비교합니다. 판사·검사·변호사팀은 대본을 받아 연기합니다.
+        </p>
+      </div>
+
+      {/* ════════ ① 준비 — 사건 개요 + 팀 배정 ════════ */}
+      {prepMode !== 'hidden' && (
+        <div ref={prepRef} className={sectionWrap(prepMode)}>
+          <div className="bg-white rounded-xl border border-rose-200 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-rose-800">⚖️ ① 준비 — 사건 개요 + 팀 배정</h2>
+            <p className="text-xs text-rose-600 mt-0.5">
+              <b>사건 자료실</b>에서 사건 개요를 함께 읽으세요. 선생님이 <b>연기 3팀(판사·검사·변호사)</b>을 정합니다.
+              나머지 모둠은 재판을 보며 <b>판결문</b>을 작성하는 판사가 됩니다.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-[3fr_2fr] gap-3 mb-3">
+            <div className="rounded-2xl border-2 border-rose-200 bg-rose-50/40 p-4">
+              <p className="text-xs font-bold text-rose-700 mb-2">📖 사건 자료실 (사건 개요)</p>
+              {/* 판결중심: 사건 시나리오(개요)만 — 증거·역할힌트는 숨김 */}
+              <JudicialCaseRoom currentStage={1} hideEvidence hideRoleHints />
+            </div>
+
+            <aside className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-4 space-y-3 self-start">
+              <h3 className="text-sm font-bold text-slate-800">
+                🎬 연기 팀 / 참관 팀
+                <span className="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                  혼합 배정
+                </span>
+              </h3>
+              <div className="space-y-2">
+                {['judge', 'prosecution', 'defense'].map((side) => {
+                  const meta = ACTING_META[side]
+                  const assigned = assignmentSummary[side] || { groups: [], students: [] }
+                  const names = [
+                    ...assigned.groups.map((g) => g.name),
+                    ...assigned.students.map((s) => s.name),
+                  ].join(', ')
+                  return (
+                    <div key={side} className={`border-2 rounded-xl px-3 py-2 ${meta.color}`}>
+                      <p className={`text-xs font-bold ${meta.text}`}>{meta.label} (연기)</p>
+                      <p className="text-[11px] text-gray-600 mt-0.5">
+                        {names ? names : '아직 배정되지 않음 — 선생님이 지정합니다.'}
+                      </p>
+                    </div>
+                  )
+                })}
+                <div className="border-2 border-dashed border-gray-300 rounded-xl px-3 py-2 bg-white">
+                  <p className="text-xs font-bold text-gray-700">
+                    🧑‍⚖️ 그 외 학생·모둠 — 판결문 작성팀
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    재판을 보며 메모하고, 모둠별 판결문을 씁니다.
+                  </p>
+                </div>
+              </div>
+              {role === 'student' && myStudentId && (
+                <div className="rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-800">
+                  나는 
+                  {myActingSide
+                    ? `${ACTING_META[myActingSide].label} (연기팀)`
+                    : '판결문 작성팀 (참관)'}
+                  입니다.
+                </div>
+              )}
+            </aside>
+          </div>
+
+          <BranchUnitBanner branch="judicial" />
+        </div>
+      )}
+
+      {/* ════════ ② 쟁점 파악 ════════ */}
+      {issuesMode !== 'hidden' && (
+        <div ref={issuesRef} className={sectionWrap(issuesMode)}>
+          <div className="bg-white rounded-xl border border-amber-200 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-amber-800">🔎 ② 쟁점 파악</h2>
+            <p className="text-xs text-amber-600 mt-0.5">
+              재판을 보기 전에, 이 사건에서 <b>무엇이 판결에 중요할지</b> 모둠끼리 쟁점을 정리하세요.
+              재판을 더 날카롭게 볼 수 있어요.
+            </p>
+          </div>
+
+          {!previewMode && role === 'student' && myGroupId ? (
+            <section className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-2">
+              <h3 className="text-sm font-bold text-amber-900">📝 우리 모둠 쟁점 메모</h3>
+              <textarea
+                value={issueDraft}
+                onChange={(e) => setIssueDraft(e.target.value)}
+                rows={5}
+                maxLength={600}
+                placeholder="예) 카톡 메시지가 진짜 약속인가? / 경영이 어려우면 임금을 안 줘도 되나? / 일부러 안 준 것인가?"
+                className="w-full text-sm border-2 border-amber-200 rounded-xl p-3 focus:outline-none focus:border-amber-400"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={saveIssue}
+                  className="px-4 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
+                >쟁점 저장</button>
+                {issueSaved && <span className="text-xs text-emerald-700">✓ 저장됨</span>}
+              </div>
+            </section>
+          ) : (
+            <div className="bg-amber-50 border-2 border-dashed border-amber-200 rounded-2xl p-4 text-sm text-amber-700">
+              🔎 학생 화면에서 모둠별 쟁점 메모를 작성합니다.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════ ③ 재판 보기 (대본 연기) ════════ */}
+      {trialMode !== 'hidden' && (
+        <div ref={trialRef} className={sectionWrap(trialMode)}>
+          <div className="bg-white rounded-xl border border-rose-200 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-rose-800">🎬 ③ 재판 보기 (대본 연기)</h2>
+            <p className="text-xs text-rose-600 mt-0.5">
+              연기 3팀(판사·검사·변호사)은 각자 <b>자기 대사</b>를 보며 순서대로 연기합니다.
+              나머지 모둠은 재판을 보며 판결문에 쓸 내용을 <b>메모</b>하세요.
+            </p>
+          </div>
+
+          {trialScript.length === 0 ? (
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center text-sm text-gray-500">
+              ⏳ 아직 재판 대본이 없습니다. 선생님이 <b>학급 설정 → 사법부</b> 또는 빠른 제어에서 판결중심 대본을 만들어 적용하면 여기에 표시됩니다.
+            </div>
+          ) : (previewMode || role === 'teacher') ? (
+            // 교사/미리보기 — 전체 대본
+            <ScriptList lines={fullScript} showAllSpeakers title="전체 대본 (교사용)" />
+          ) : myActingSide ? (
+            // 연기팀 학생 — 내 팀 대사만
+            <div className="space-y-3">
+              <div className={`border-2 rounded-xl px-4 py-2 ${ACTING_META[myActingSide].color}`}>
+                <p className={`text-sm font-bold ${ACTING_META[myActingSide].text}`}>
+                  {ACTING_META[myActingSide].label} — 내 대사 ({myScriptLines.length}줄)
+                </p>
+                <p className="text-[11px] text-gray-600 mt-0.5">
+                  번호 순서를 따라가세요. 사이사이 다른 역할의 대사가 나온 뒤 내 차례입니다.
+                </p>
+              </div>
+              <ScriptList lines={myScriptLines} title="내 대사" />
+            </div>
+          ) : (
+            // 참관팀 학생 — 대본 숨김 + 메모
+            <section className="bg-white rounded-2xl shadow-sm border-2 border-violet-200 p-4">
+              <div className="rounded-xl bg-violet-50 border border-violet-200 p-3 mb-3">
+                <p className="text-sm font-bold text-violet-800">👀 우리 모둠은 참관·판결문 작성팀</p>
+                <p className="text-[11px] text-violet-700 mt-0.5">
+                  연기를 보며 핵심 발언·증거·쟁점을 메모하세요. 다음 단계에서 판결문을 작성합니다.
+                </p>
+              </div>
+              <h3 className="font-bold text-violet-800 text-sm mb-2">🗒️ 재판 메모 (학급 공유)</h3>
+              <CommentList targetType="trial" targetId={judicialCaseId} />
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ════════ ④ 판결문 작성·게시 (전 모둠) ════════ */}
+      {writingMode !== 'hidden' && (
+        <div ref={writingRef} className={sectionWrap(writingMode)}>
+          <div className="bg-white rounded-xl border border-slate-300 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-slate-800">📜 ④ 판결문 작성·게시</h2>
+            <p className="text-xs text-slate-600 mt-0.5">
+              이제 모든 모둠이 <b>판사</b>입니다. 재판에서 들은 주장·증거를 바탕으로 모둠끼리 <b>유죄/무죄를 정하고 판결문</b>을 작성해 게시하세요.
+            </p>
+          </div>
+
+          {!previewMode && role === 'student' && myGroupId ? (
+            <section className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-4 space-y-3">
+              <div>
+                <p className="text-sm font-bold text-rose-900 mb-1">① 우리 모둠의 결론</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDecisionChoice('guilty')}
+                    className={`flex-1 py-2 text-sm rounded-lg font-semibold ${decisionChoice === 'guilty' ? 'bg-rose-600 text-white' : 'bg-white text-rose-800 border-2 border-rose-200 hover:bg-rose-100'}`}
+                  >⚖️ 유죄</button>
+                  <button
+                    onClick={() => setDecisionChoice('notGuilty')}
+                    className={`flex-1 py-2 text-sm rounded-lg font-semibold ${decisionChoice === 'notGuilty' ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-800 border-2 border-emerald-200 hover:bg-emerald-100'}`}
+                  >🕊️ 무죄</button>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-rose-900 mb-1">② 판결문 작성</p>
+                <VerdictTemplate caseId={judicialCaseId} groupId={myGroupId} decision={decisionChoice} />
+              </div>
+            </section>
+          ) : (
+            <div className="bg-rose-50 border-2 border-dashed border-rose-200 rounded-2xl p-4 text-sm text-rose-700">
+              📜 학생 화면에서 모둠별로 유죄/무죄를 정하고 판결문을 작성·게시합니다.
+            </div>
+          )}
+
+          {/* 우리 모둠이 이미 게시한 판결문 미리보기 */}
+          {myGroupId && postedVerdicts[myGroupId] && (
+            <div className="mt-3 bg-white border-2 border-emerald-200 rounded-2xl p-4">
+              <p className="text-xs font-bold text-emerald-700 mb-1">✓ 우리 모둠이 게시한 판결문</p>
+              <VerdictCard v={postedVerdicts[myGroupId]} groupName={groups?.[myGroupId]?.name || myGroupId} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════ ⑤ 온라인 토의 (판결문 비교) ════════ */}
+      {discussionMode !== 'hidden' && (
+        <div ref={discussionRef} className={sectionWrap(discussionMode)}>
+          <div className="bg-white rounded-xl border border-violet-200 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-violet-800">💬 ⑤ 온라인 토의 — 판결문 비교</h2>
+            <p className="text-xs text-violet-600 mt-0.5">
+              모둠별 판결문을 펼쳐 읽고, <b>결론과 근거</b>가 어떻게 다른지 비교하며 의견을 나눕니다.
+            </p>
+          </div>
+
+          {Object.keys(postedVerdicts).length > 0 ? (
+            <section className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-3">
+              <h3 className="font-bold text-amber-800 text-base mb-2">📚 게시된 모둠별 판결문</h3>
+              <div className="space-y-3">
+                {Object.entries(postedVerdicts)
+                  .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
+                  .map(([gid, v]) => (
+                    <details key={gid} className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
+                      <summary className="cursor-pointer px-3 py-2 bg-slate-100 flex items-center gap-2 select-none">
+                        <span className="text-sm font-bold text-slate-800">
+                          🧑‍⚖️ {groups?.[gid]?.name || gid}
+                        </span>
+                        <span className={`text-xs font-bold ${v.decision === 'guilty' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {v.decision === 'guilty' ? '유죄' : '무죄'}
+                        </span>
+                        <span className="text-[10px] text-gray-400 ml-auto">게시됨</span>
+                      </summary>
+                      <div className="p-3">
+                        <VerdictCard v={v} groupName={groups?.[gid]?.name || gid} hideHeader />
+                      </div>
+                    </details>
+                  ))}
+              </div>
+            </section>
+          ) : (
+            <div className="bg-amber-50 border-2 border-dashed border-amber-200 rounded-2xl p-4 mb-3 text-center text-sm text-amber-700">
+              ⏳ 아직 게시된 판결문이 없습니다. ④ 단계에서 모둠 판결문을 게시하면 여기에 모입니다.
+            </div>
+          )}
+
+          <section className="bg-white rounded-2xl shadow-sm border-2 border-violet-200 p-4">
+            <h3 className="font-bold text-violet-800 text-base mb-2">🗣️ 판결문 토의</h3>
+            <StanceComments targetType="verdictDiscussion" targetId={judicialCaseId} />
+          </section>
+        </div>
+      )}
+
+      {/* ════════ ⑥ 기사 작성 ════════ */}
+      {articleMode !== 'hidden' && (
+        <div ref={articleRef} className={sectionWrap(articleMode)}>
+          <div className="bg-white rounded-xl border border-emerald-200 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-emerald-800">📰 ⑥ 기사 작성 — 사법부가 하는 일</h2>
+            <p className="text-xs text-emerald-600 mt-0.5">
+              이번 재판과 사법부의 역할을 기사로 정리합니다. 교사 승인 후 여론판에 게시됩니다.
+            </p>
+          </div>
+          <ArticleSection />
+        </div>
+      )}
+
+      {/* ════════ ⑦ 여론조사 ════════ */}
+      {pollMode !== 'hidden' && (
+        <div ref={pollRef} className={sectionWrap(pollMode)}>
+          <div className="bg-white rounded-xl border border-indigo-200 px-4 py-3 mb-3">
+            <h2 className="text-base font-bold text-indigo-800">📊 ⑦ 여론조사 — 판결에 대한 평가</h2>
+            <p className="text-xs text-indigo-600 mt-0.5">
+              여러 모둠의 판결에 대해 어떻게 생각하나요? 시민의 한 사람으로서 의견을 응답해 주세요.
+            </p>
+          </div>
+          <PollFeed plannedOnly={true} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 대본 줄 목록
+function ScriptList({ lines, title, showAllSpeakers = false }) {
+  if (!lines || lines.length === 0) {
+    return <p className="text-xs text-gray-400 italic px-2">표시할 대사가 없습니다.</p>
+  }
+  // scene별 그룹
+  const scenes = []
+  let cur = null
+  for (const l of lines) {
+    const scene = l.scene || ''
+    if (!cur || cur.scene !== scene) {
+      cur = { scene, items: [] }
+      scenes.push(cur)
+    }
+    cur.items.push(l)
+  }
+  return (
+    <div className="bg-white rounded-2xl border-2 border-slate-200 p-4 space-y-3">
+      {title && <h3 className="text-sm font-bold text-slate-800">{title}</h3>}
+      {scenes.map((sc, si) => (
+        <div key={si} className="space-y-1.5">
+          {sc.scene && (
+            <p className="text-[11px] font-bold text-slate-400 border-b border-slate-100 pb-0.5">▌ {sc.scene}</p>
+          )}
+          {sc.items.map((l, i) => (
+            <div key={i} className="flex gap-2 items-start">
+              <span className="text-[10px] font-mono text-gray-300 mt-1 w-5 shrink-0 text-right">{l.order}</span>
+              <div className="flex-1">
+                {showAllSpeakers && (
+                  <span className="text-[11px] font-bold text-slate-500 mr-1">{SPEAKER_LABEL[l.speaker] || l.speaker}:</span>
+                )}
+                <span className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{l.text}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// 판결문 카드
+function VerdictCard({ v, groupName, hideHeader = false }) {
+  if (!v) return null
+  return (
+    <div className="space-y-1">
+      {!hideHeader && (
+        <p className="text-sm font-semibold">
+          {v.decision === 'guilty' ? '⚖️ 유죄' : '🕊️ 무죄'} — {groupName}
+        </p>
+      )}
+      <p className="text-sm whitespace-pre-wrap text-gray-800">{v.body}</p>
+      {v.sentence && <p className="text-xs text-gray-500 mt-1">선고/주문: {v.sentence}</p>}
+    </div>
+  )
+}
+
+export default JudicialVerdictTab

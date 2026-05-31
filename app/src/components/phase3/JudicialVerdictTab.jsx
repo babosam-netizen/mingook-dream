@@ -3,7 +3,6 @@ import useGameStore from '../../store/gameStore'
 import { subscribe, setAt, updateAt } from '../../lib/rtdb-helpers'
 import { useWorkflow } from '../../lib/use-workflow'
 import CommentList from '../phase1/CommentList'
-import StanceComments from '../phase2/StanceComments'
 import VerdictTemplate from '../scaffolding/VerdictTemplate'
 import JudicialCaseRoom from './JudicialCaseRoom'
 import BranchUnitBanner from './BranchUnitBanner'
@@ -35,7 +34,7 @@ const ACTING_META = {
  *   verdict-prep       (0) ① 준비 — 사건 개요 파악 + 팀 배정 확인
  *   verdict-issues     (1) ② 쟁점 파악 — 모둠별 쟁점 메모
  *   verdict-trial      (2) ③ 재판하기 — 연기 3팀 대본 연기 + 토론도구에서 판결문 작성·게시
- *   verdict-discussion (3) ④ 판결문 토의 — 게시된 판결문 비교
+ *   verdict-discussion (3) ④ 판결문 토의 — 게시된 판결문별 평가·댓글·답변
  *   article3           (5) ⑥ 기사 작성
  *   poll4              (6) ⑦ 여론조사
  */
@@ -421,19 +420,23 @@ function JudicialVerdictTab({ previewMode = false }) {
         </div>
       )}
 
-      {/* ════════ ⑤ 온라인 토의 (판결문 비교) ════════ */}
+      {/* ════════ ④ 판결문 토의 (판결문별 평가·댓글·답변) ════════ */}
       {discussionMode !== 'hidden' && (
         <div ref={discussionRef} className={sectionWrap(discussionMode)}>
           <div className="bg-white rounded-xl border border-violet-200 px-4 py-3 mb-3">
             <h2 className="text-base font-bold text-violet-800">💬 ④ 판결문 토의</h2>
             <p className="text-xs text-violet-600 mt-0.5">
-              모둠별 판결문을 펼쳐 읽고, <b>결론과 근거</b>가 어떻게 다른지 비교하며 의견을 나눕니다.
+              각 판결문을 펼쳐 읽고, <b>근거·공정성·설득력</b>을 평가한 뒤 댓글이나 질문을 남기세요.
+              질문에는 <b>해당 판결문을 쓴 모둠</b>만 답변할 수 있습니다.
             </p>
           </div>
 
           {Object.keys(postedVerdicts).length > 0 ? (
-            <section className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-3">
-              <h3 className="font-bold text-amber-800 text-base mb-2">📚 게시된 모둠별 판결문</h3>
+            <section className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+              <h3 className="font-bold text-amber-800 text-base mb-1">📚 게시된 모둠별 판결문</h3>
+              <p className="text-xs text-amber-700 mb-3">
+                판결문마다 토의창이 따로 열립니다. 자기 모둠 판결문에는 새 평가를 달지 않고, 친구들의 질문에 답변합니다.
+              </p>
               <div className="space-y-3">
                 {Object.entries(postedVerdicts)
                   .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
@@ -448,8 +451,20 @@ function JudicialVerdictTab({ previewMode = false }) {
                         </span>
                         <span className="text-[10px] text-gray-400 ml-auto">게시됨</span>
                       </summary>
-                      <div className="p-3">
+                      <div className="p-3 space-y-3">
                         <VerdictCard v={v} groupName={groups?.[gid]?.name || gid} hideHeader />
+                        <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-3">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <h4 className="text-sm font-bold text-violet-800">3축 평가와 댓글</h4>
+                            <span className="text-[11px] text-violet-500">질문 답변: {groups?.[gid]?.name || gid}만 가능</span>
+                          </div>
+                          <CommentList
+                            targetType="verdict"
+                            targetId={`${judicialCaseId}:${gid}`}
+                            targetGroupId={gid}
+                            allowReplies
+                          />
+                        </div>
                       </div>
                     </details>
                   ))}
@@ -460,11 +475,6 @@ function JudicialVerdictTab({ previewMode = false }) {
               ⏳ 아직 게시된 판결문이 없습니다. ④ 단계에서 모둠 판결문을 게시하면 여기에 모입니다.
             </div>
           )}
-
-          <section className="bg-white rounded-2xl shadow-sm border-2 border-violet-200 p-4">
-            <h3 className="font-bold text-violet-800 text-base mb-2">🗣️ 판결문 토의</h3>
-            <StanceComments targetType="verdictDiscussion" targetId={judicialCaseId} />
-          </section>
         </div>
       )}
 

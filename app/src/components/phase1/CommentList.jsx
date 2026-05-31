@@ -31,6 +31,11 @@ const ARTICLE_RATING_AXES = [
   { key: 'feasibility', full: '🤝 여러사람을 배려하는가?',      short: '🤝 배려', color: 'bg-emerald-500' },
   { key: 'logic',       full: '💡 이해하기 쉬운가?',            short: '💡 쉬움', color: 'bg-amber-500' },
 ]
+const VERDICT_RATING_AXES = [
+  { key: 'relevance',   full: '🔎 증거와 쟁점을 잘 반영했는가?', short: '🔎 근거', color: 'bg-rose-500' },
+  { key: 'feasibility', full: '⚖️ 양쪽 입장을 공정하게 보았는가?', short: '⚖️ 공정', color: 'bg-emerald-500' },
+  { key: 'logic',       full: '🧠 결론이 논리적으로 설득되는가?', short: '🧠 설득', color: 'bg-amber-500' },
+]
 const DEFAULT_RATING_AXES = [
   { key: 'relevance',   label: '주제' },
   { key: 'feasibility', label: '실현' },
@@ -45,6 +50,11 @@ const ARTICLE_RATING_LABELS = [
   { key: 'relevance',   label: '정확' },
   { key: 'feasibility', label: '배려' },
   { key: 'logic',       label: '쉬움' },
+]
+const VERDICT_RATING_LABELS = [
+  { key: 'relevance',   label: '근거' },
+  { key: 'feasibility', label: '공정' },
+  { key: 'logic',       label: '설득' },
 ]
 
 function CommentList({ targetType, targetId, targetGroupId, readOnly = false, allowReplies = false }) {
@@ -75,8 +85,21 @@ function CommentList({ targetType, targetId, targetGroupId, readOnly = false, al
   const [editing, setEditing] = useState(false)
   const isBillTarget = targetType === 'bill'
   const isArticleTarget = targetType === 'article'
-  const ratingAxes = isBillTarget ? BILL_RATING_AXES : isArticleTarget ? ARTICLE_RATING_AXES : undefined
-  const ratingLabels = isBillTarget ? BILL_RATING_LABELS : isArticleTarget ? ARTICLE_RATING_LABELS : DEFAULT_RATING_AXES
+  const isVerdictTarget = targetType === 'verdict'
+  const ratingAxes = isBillTarget
+    ? BILL_RATING_AXES
+    : isArticleTarget
+    ? ARTICLE_RATING_AXES
+    : isVerdictTarget
+    ? VERDICT_RATING_AXES
+    : undefined
+  const ratingLabels = isBillTarget
+    ? BILL_RATING_LABELS
+    : isArticleTarget
+    ? ARTICLE_RATING_LABELS
+    : isVerdictTarget
+    ? VERDICT_RATING_LABELS
+    : DEFAULT_RATING_AXES
 
   useEffect(() => {
     const unsub = subscribe(roomCode, 'comments', (data) => {
@@ -236,6 +259,8 @@ function CommentList({ targetType, targetId, targetGroupId, readOnly = false, al
                 ? '이 기사에 대한 의견을 남겨 보세요'
                 : targetType === 'reflection'
                 ? '이 정리글에 공감 의견을 남겨 보세요'
+                : targetType === 'verdict'
+                ? '이 판결문에 대한 평가, 댓글, 질문을 남겨 보세요'
                 : '이 모둠 포스터에 대한 의견을 남겨 보세요'
             }
             className="w-full text-sm px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"

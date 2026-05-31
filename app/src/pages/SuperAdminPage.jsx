@@ -16,7 +16,7 @@ import { database } from '../lib/firebase'
  */
 
 const SUPER_PASSCODE =
-  import.meta.env.VITE_SUPER_ADMIN_PASSCODE || 'super-1004'
+  import.meta.env.VITE_SUPER_ADMIN_PASSCODE || ''
 const UNLOCK_KEY = 'class-democra-super-unlocked'
 const LIST_KEY = 'class-democra-super-rooms'
 const EMPTY_ROOMS = []

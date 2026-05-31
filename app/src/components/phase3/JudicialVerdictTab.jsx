@@ -437,7 +437,7 @@ function JudicialVerdictTab({ previewMode = false }) {
               <p className="text-xs text-amber-700 mb-3">
                 판결문마다 토의창이 따로 열립니다. 자기 모둠 판결문에는 새 평가를 달지 않고, 친구들의 질문에 답변합니다.
               </p>
-              <div className="space-y-3">
+              <div className="grid gap-3 xl:grid-cols-2">
                 {Object.entries(postedVerdicts)
                   .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
                   .map(([gid, v]) => (

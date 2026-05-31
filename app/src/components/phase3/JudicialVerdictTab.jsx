@@ -461,10 +461,7 @@ function JudicialVerdictTab({ previewMode = false }) {
                       <div className="p-3 space-y-3">
                         <VerdictCard v={v} groupName={groups?.[gid]?.name || gid} hideHeader />
                         <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-3">
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <h4 className="text-sm font-bold text-violet-800">3축 평가와 댓글</h4>
-                            <span className="text-[11px] text-violet-500">질문 답변: {groups?.[gid]?.name || gid}만 가능</span>
-                          </div>
+                          <h4 className="text-sm font-bold text-violet-800 mb-2">3축 평가와 댓글</h4>
                           <CommentList
                             targetType="verdict"
                             targetId={`${judicialCaseId}:${gid}`}

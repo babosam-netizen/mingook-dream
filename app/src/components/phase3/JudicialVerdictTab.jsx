@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
-import { subscribe, setAt } from '../../lib/rtdb-helpers'
+import { subscribe, setAt, updateAt } from '../../lib/rtdb-helpers'
 import { useWorkflow } from '../../lib/use-workflow'
 import CommentList from '../phase1/CommentList'
 import StanceComments from '../phase2/StanceComments'
@@ -10,6 +10,7 @@ import BranchUnitBanner from './BranchUnitBanner'
 import ArticleSection from '../news/ArticleSection'
 import PollFeed from '../shared/PollFeed'
 import { getJudicialAssignmentSummary, getStudentJudicialSide } from '../../lib/judicial-teams'
+import JudicialCaseRoomButton from './JudicialCaseRoomButton'
 
 // 연기 3팀이 화면에서 보는 자기 대사(speaker) 매핑.
 // 판결중심에서는 판사·검사·변호사 3팀만 연기하므로, 증인·피고인 대사는 양측에 나눠 배정한다.
@@ -112,6 +113,18 @@ function JudicialVerdictTab({ previewMode = false }) {
   // ─── Firebase 구독 ─────────────────────────────────────────────────────
   const [verdicts, setVerdicts] = useState({})
   const [issues,   setIssues]   = useState({})
+  const [debateSessions, setDebateSessions] = useState({})
+
+  useEffect(() => {
+    if (!roomCode) return
+    const u = subscribe(roomCode, 'debateSessions', (d) => setDebateSessions(d || {}))
+    return () => u?.()
+  }, [roomCode])
+
+  // 활성 재판 토론 세션
+  const trialDebate = Object.entries(debateSessions)
+    .map(([id, s]) => s ? { ...s, id } : null)
+    .find((s) => s?.isActive && s?.type === 'trial') || null
 
   useEffect(() => {
     if (!roomCode || !judicialCaseId) return
@@ -306,11 +319,26 @@ function JudicialVerdictTab({ previewMode = false }) {
       {trialMode !== 'hidden' && (
         <div ref={trialRef} className={sectionWrap(trialMode)}>
           <div className="bg-white rounded-xl border border-rose-200 px-4 py-3 mb-3">
-            <h2 className="text-base font-bold text-rose-800">🎬 ③ 재판 보기 (대본 연기)</h2>
-            <p className="text-xs text-rose-600 mt-0.5">
-              연기 3팀(판사·검사·변호사)은 각자 <b>자기 대사</b>를 보며 순서대로 연기합니다.
-              나머지 모둠은 재판을 보며 판결문에 쓸 내용을 <b>메모</b>하세요.
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-rose-800">🎬 ③ 재판 보기 (대본 연기)</h2>
+                <p className="text-xs text-rose-600 mt-0.5">
+                  연기 3팀(판사·검사·변호사)은 각자 <b>자기 대사</b>를 보며 순서대로 연기합니다.
+                  나머지 모둠은 재판을 보며 판결문에 쓸 내용을 <b>메모</b>하세요.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <JudicialCaseRoomButton currentStage={3} />
+                {trialDebate && (
+                  <button
+                    onClick={() => updateAt(roomCode, `debateSessions/${trialDebate.id}`, { isPopupOpen: true })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
+                  >
+                    🎙️ 토론 도구
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {trialScript.length === 0 ? (

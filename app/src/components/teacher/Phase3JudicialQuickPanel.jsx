@@ -505,12 +505,15 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
       type: 'trial', // ⚖️ 국민참여재판 — 검사/변호인/배심원/재판장 라벨 자동 적용 (DEBATE_SIDE_LABELS.trial)
       chairId: draft.chairId || '',
       chairName: draft.chairName || '재판부 (판사)',
-      activeTools: ['stancePollPre', 'prepCard', 'debateScript', 'debateTimer'],
+      // 판결중심: 타이머만 사용 / 역할중심: 전체 도구
+      activeTools: isVerdict
+        ? ['debateTimer']
+        : ['stancePollPre', 'prepCard', 'debateScript', 'debateTimer'],
       currentDebateStage: 0,
       isActive: true,
       isPopupOpen: true,
-      // 학생/교사 화면 모두 '토론 전' 탭으로 시작 — 타이머가 실제 시작되면 '토론 중'으로 자동 전환됨
-      teacherTab: 'pre',
+      // 판결중심은 토론 중으로 바로 진입 / 역할중심은 토론 전부터 시작
+      teacherTab: isVerdict ? 'mid' : 'pre',
       relatedCaseId: activeCaseRelatedId,  // ★ branchConfig 케이스 ID 사용
       sourceStepId: 'judicial-trial',
       proStudents,
@@ -1078,6 +1081,72 @@ function Phase3JudicialQuickPanel({ onOpenDebateTool }) {
                   </div>
                 )
               })()}
+            </div>
+          )}
+
+          {/* ════ 판결중심 stage 2 — 토론 도구 제어 ════ */}
+          {isVerdict && stage === 2 && (
+            <div className="pt-2 border-t border-rose-200/50 space-y-2">
+              <h4 className="text-xs font-bold text-rose-850">🎙️ 재판 토론 도구</h4>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={startJudicialDebate}
+                  disabled={!!trialDebate}
+                  className="text-[11px] font-bold px-2 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  🎙️ 세션 생성
+                </button>
+                <button
+                  onClick={onOpenDebateTool}
+                  disabled={!trialDebate || !onOpenDebateTool}
+                  className="text-[11px] font-bold px-2 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  🎙️ 토론 도구 열기
+                </button>
+                <button
+                  onClick={openTrialDebateBoard}
+                  disabled={!trialDebate}
+                  className="text-[11px] font-bold px-2 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-700 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  📺 전광판 띄우기
+                </button>
+                {trialDebate && (
+                  <button
+                    onClick={async () => {
+                      await updateAt(roomCode, `debateSessions/${trialDebate.id}`, { isActive: false, isPopupOpen: false })
+                    }}
+                    className="text-[11px] font-bold px-2 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 border border-red-200"
+                  >
+                    ■ 세션 종료
+                  </button>
+                )}
+              </div>
+              {/* 증거 TV 송출 */}
+              {judicialActiveCase?.evidence?.length > 0 && (
+                <div className="border border-amber-200 rounded-xl bg-amber-50 p-2.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[10px] font-black text-amber-800">🗂️ 증거 TV 송출</p>
+                    {broadcastingEvidenceId && (
+                      <button onClick={stopEvidenceBroadcast} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-full font-bold hover:bg-red-600">■ 종료</button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {judicialActiveCase.evidence.map((ev) => {
+                      const sideLabel = ev.side === 'prosecution' ? '🔴 검사' : ev.side === 'defense' ? '🔵 변호' : '🟣 공통'
+                      const isOn = broadcastingEvidenceId === ev.id
+                      return (
+                        <button key={ev.id} onClick={() => broadcastEvidence(ev)}
+                          className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded-lg border text-[10px] transition-all ${isOn ? 'bg-amber-400 border-amber-500 text-white font-black' : 'bg-white border-amber-200 text-slate-700 hover:bg-amber-100'}`}
+                        >
+                          <span className="shrink-0">{sideLabel}</span>
+                          <span className="truncate font-semibold">{ev.title}</span>
+                          {isOn && <span className="ml-auto animate-pulse shrink-0">📺 송출중</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

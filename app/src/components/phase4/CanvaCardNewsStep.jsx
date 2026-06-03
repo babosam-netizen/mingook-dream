@@ -830,9 +830,14 @@ export default function CanvaCardNewsStep() {
             </div>
           )}
 
+
+        </div>
+
+                {/* 오른쪽: URL 제출 + 미리보기 */}
+        <div className="space-y-3">
           {/* 캔바 바로가기 + 제작 가이드 */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3 shadow-sm">
-            <h3 className="font-black text-gray-800 text-sm">📋 카드뉴스 제작 가이드</h3>
+          <div className="bg-white border border-violet-100 rounded-2xl p-4 space-y-3 shadow-sm">
+            <h3 className="font-black text-violet-850 text-sm">📋 카드뉴스 제작 가이드</h3>
             <ul className="text-xs text-gray-600 space-y-1.5 list-disc list-inside">
               <li>Canva 프레젠테이션(16:9) 또는 인스타그램 정사각형 템플릿 추천</li>
               <li>슬라이드 1: 제목 (나의 여정 이야기)</li>
@@ -848,10 +853,6 @@ export default function CanvaCardNewsStep() {
               🎨 Canva 열기
             </a>
           </div>
-        </div>
-
-        {/* 오른쪽: URL 제출 + 미리보기 */}
-        <div className="space-y-3">
           <div className="bg-white border border-violet-200 rounded-2xl p-5 space-y-4 shadow-sm">
             <div className="border-b border-violet-100 pb-2">
               <h3 className="font-black text-violet-850 text-sm flex items-center gap-1.5">

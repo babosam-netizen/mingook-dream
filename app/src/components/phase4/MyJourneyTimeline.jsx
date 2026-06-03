@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe, updateAt, getOnce } from '../../lib/rtdb-helpers'
+import PosterMedia from '../phase1/PosterMedia'
 
 /**
  * 1단계: 민국에서 나의 발자취 돌아보기
@@ -53,18 +54,18 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="relative z-10 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="relative z-10 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         style={{ background: meta.bg, border: `3px solid ${meta.border}` }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 상단 헤더 & 별점 영역 */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100/50 flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className="text-2xl">{act.icon || meta.emoji}</span>
-              <span className="text-[11px] font-black px-2 py-0.5 rounded-full"
-                style={{ background: meta.color + '15', color: meta.color }}>
-                {meta.label} · {meta.sub}
+              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase border shadow-sm"
+                style={{ background: meta.color + '15', borderColor: meta.color + '44', color: meta.color }}>
+                {meta.label} · {act.stepLabel}
               </span>
             </div>
             <h3 className="font-black text-base md:text-lg leading-snug" style={{ color: meta.text }}>
@@ -95,10 +96,62 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
           </div>
         </div>
 
-        {/* 중앙 본문 (전체 펼침 상태) */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* 중앙 본문 (전체 펼침 상태 및 시각화 지원) */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          
+          {/* 1. 포스터인 경우 미디어 미리보기 */}
+          {act.type === 'poster' && act.poster && (
+            <div className="rounded-2xl overflow-hidden shadow border bg-white aspect-[4/3] relative">
+              <PosterMedia 
+                poster={act.poster} 
+                className="w-full h-full"
+                imageClassName="w-full h-full object-contain bg-slate-50"
+              />
+            </div>
+          )}
+
+          {/* 2. 링크(뉴스/영상/캔바)인 경우 카드 형태 시각화 */}
+          {act.type === 'link' && act.link && (() => {
+            const l = act.link
+            const isCanva = l.url && l.url.toLowerCase().includes('canva.')
+            return (
+              <div className="space-y-3">
+                {/* 캔바 임베드 또는 썸네일 지원 */}
+                {isCanva ? (
+                  <div className="rounded-2xl overflow-hidden shadow border bg-slate-50 aspect-[4/3] relative">
+                    <PosterMedia 
+                      poster={{ posterCanvaUrl: l.url }} 
+                      className="w-full h-full"
+                    />
+                  </div>
+                ) : l.thumbnail ? (
+                  <img src={l.thumbnail} alt="기사 썸네일" className="w-full h-40 object-cover rounded-2xl shadow-sm border bg-white" />
+                ) : null}
+
+                <div className="bg-white/85 p-4 rounded-2xl border flex flex-col gap-2 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-2 py-0.5 rounded-full">
+                      {l.type === 'news' ? '📰 신문기사' : '🎬 영상·캔바'}
+                    </span>
+                    {l.source && (
+                      <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        출처: {l.source}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <a href={l.url} target="_blank" rel="noreferrer" 
+                    className="text-xs font-black text-blue-600 hover:underline break-all flex items-center gap-1">
+                    🔗 원본 자료 링크 바로가기 ↗
+                  </a>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 3. 일반 텍스트 콘텐츠 */}
           {act.content ? (
-            <div className="rounded-2xl p-5 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-gray-100 max-h-[40vh] overflow-y-auto"
+            <div className="rounded-2xl p-5 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-gray-100 max-h-[35vh] overflow-y-auto"
               style={{ background: 'rgba(255,255,255,0.75)' }}>
               {act.content}
             </div>
@@ -182,10 +235,10 @@ function Node({ act, index, ratings, isActive, onClick }) {
         title={act.title}
       >
         <span>{act.icon}</span>
-        {/* 별점 표시 */}
+        {/* 별점 표시 (알약 모양 ⭐ 뱃지) */}
         {score > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-yellow-400 text-white text-[9px] font-black flex items-center justify-center shadow">
-            {score}
+          <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full bg-yellow-400 text-white text-[9px] font-black flex items-center gap-0.5 shadow-md border border-white animate-pulse">
+            ⭐{score}
           </span>
         )}
       </button>
@@ -285,10 +338,11 @@ export default function MyJourneyTimeline() {
           acts.push({
             key: `phase1_slogan_${gid}_${sid}`,
             phase: 1,
+            type: 'slogan',
             icon: '💬',
             shortTitle: '슬로건',
+            stepLabel: '슬로건 제출',
             title: `시민광장 슬로건`,
-            meta: '💬 슬로건 · 1여정',
             content: `내가 제출한 슬로건:\n"${s.text}"`
           })
         }
@@ -300,8 +354,10 @@ export default function MyJourneyTimeline() {
       if (e.authorStudentId !== myStudentId) return
       acts.push({
         key: `phase1_essay_${id}`, phase: 1,
+        type: 'essay',
         icon: '📝', shortTitle: '주장글',
-        title: e.title || '주장하는 글', meta: '📝 주장글 · 1여정',
+        stepLabel: '나의 주장글(에세이) 작성',
+        title: e.title || '주장하는 글',
         content: [
           e.claim ? `[주장] ${e.claim}` : '',
           e.evidence ? `[근거] ${e.evidence}` : '',
@@ -316,10 +372,12 @@ export default function MyJourneyTimeline() {
       const isMyUpload = p.authorStudentId === myStudentId
       acts.push({
         key: `phase1_poster_${id}`, phase: 1,
+        type: 'poster',
+        poster: p,
         icon: '🖼️', shortTitle: isMyUpload ? '내포스터' : '모둠포스터',
+        stepLabel: isMyUpload ? '내 포스터 제작' : '모둠 포스터 제작',
         title: p.title || p.caption || (isMyUpload ? '내가 올린 포스터' : '우리 모둠 포스터'), 
-        meta: isMyUpload ? '🖼️ 내 포스터 · 1여정' : '🖼️ 모둠 포스터 · 1여정',
-        content: p.caption || p.description || '(포스터 설명 없음)',
+        content: p.caption || p.description || '',
       })
     })
 
@@ -337,8 +395,10 @@ export default function MyJourneyTimeline() {
 
       acts.push({
         key: `phase1_poll_${pid}`, phase: 1,
+        type: 'poll',
         icon: '📊', shortTitle: '설문투표',
-        title: p.question || '시민광장 설문조사', meta: '📊 설문조사 · 1여정',
+        stepLabel: '시민 여론조사 투표',
+        title: p.question || '시민광장 설문조사',
         content: `내가 선택한 항목: ${label}\n\n${reason ? `[선택 이유]\n${reason}` : ''}`,
       })
     })
@@ -350,8 +410,10 @@ export default function MyJourneyTimeline() {
       const c = candidates[myGroupId]
       acts.push({
         key: 'phase2_candidate', phase: 2,
+        type: 'candidate',
         icon: '🗳️', shortTitle: '후보등록',
-        title: c.candidateName ? `후보: ${c.candidateName}` : '후보 등록', meta: '🗳️ 후보 등록 · 2여정',
+        stepLabel: '대통령 후보 등록',
+        title: c.candidateName ? `후보: ${c.candidateName}` : '후보 등록',
         content: `[대표 공약]\n${c.pledge || c.manifesto || ''}`,
       })
     }
@@ -361,8 +423,10 @@ export default function MyJourneyTimeline() {
       if (s.authorStudentId !== myStudentId) return
       acts.push({
         key: `phase2_support_${id}`, phase: 2,
+        type: 'support',
         icon: '📣', shortTitle: '지지선언',
-        title: '대통령 후보 지지 선언문', meta: '📣 지지선언 · 2여정',
+        stepLabel: '대통령 후보 지지선언문',
+        title: '대통령 후보 지지 선언문',
         content: s.content || s.statement || '',
       })
     })
@@ -372,8 +436,10 @@ export default function MyJourneyTimeline() {
       if (a.authorStudentId !== myStudentId || a.phase !== 2) return
       acts.push({
         key: `phase2_article_${id}`, phase: 2,
+        type: 'article',
         icon: '📰', shortTitle: '선거기사',
-        title: a.title || '선거 기사', meta: '📰 선거 기사 · 2여정',
+        stepLabel: '선거 보도 기사 작성',
+        title: a.title || '선거 기사',
         content: a.headline ? `[헤드라인] ${a.headline}\n\n${a.body}` : a.body || a.content || '',
       })
     })
@@ -382,8 +448,10 @@ export default function MyJourneyTimeline() {
     if (electionVotes[myStudentId]) {
       acts.push({
         key: 'phase2_election', phase: 2,
+        type: 'election',
         icon: '🗳️', shortTitle: '대선투표',
-        title: '대통령 선거 투표 참여', meta: '🗳️ 투표 완료 · 2여정',
+        stepLabel: '대통령 선거 투표',
+        title: '대통령 선거 투표 참여',
         content: '대한민국 제1대 대통령 선거 투표에 참여하였습니다.',
       })
     }
@@ -393,9 +461,12 @@ export default function MyJourneyTimeline() {
       if (l.submitterStudentId !== myStudentId || l.type !== 'news') return
       acts.push({
         key: `phase2_news_${id}`, phase: 2,
+        type: 'link',
+        link: l,
         icon: '🔗', shortTitle: '뉴스공유',
-        title: l.title || '공유한 뉴스기사', meta: '🔗 뉴스 기사 공유 · 2여정',
-        content: `[헤드라인] ${l.title || ''}\n${l.summary ? `\n[요약]\n${l.summary}` : ''}\n\n[출처] ${l.source || ''}\n[링크] ${l.url}`,
+        stepLabel: '선거 관련 뉴스 공유',
+        title: l.title || '공유한 뉴스기사',
+        content: l.summary ? `[요약]\n${l.summary}` : '',
       })
     })
 
@@ -408,8 +479,10 @@ export default function MyJourneyTimeline() {
       bills.forEach((bill, i) => {
         acts.push({
           key: `phase3_bill_${unitId}_${i}`, phase: 3,
+          type: 'bill',
           icon: '🏛️', shortTitle: '제안법안',
-          title: bill.title || '입법부 제안 법안', meta: '🏛️ 입법 제안 · 3여정',
+          stepLabel: '의회 법안 발의',
+          title: bill.title || '입법부 제안 법안',
           content: bill.content || bill.body || '',
         })
       })
@@ -420,8 +493,10 @@ export default function MyJourneyTimeline() {
       if (!unit || unit.groupId !== myGroupId || unit.type !== 'executive') return
       acts.push({
         key: `phase3_executive_${unitId}`, phase: 3,
+        type: 'policy',
         icon: '🏢', shortTitle: '행정정책',
-        title: unit.ministryName || '행정부 정책 수립', meta: '🏢 행정 정책 · 3여정',
+        stepLabel: '행정부 국정 정책 수립',
+        title: unit.ministryName || '행정부 정책 수립',
         content: `[수립 정책]\n${unit.policyDraft || unit.finalPolicy || ''}`,
       })
     })
@@ -431,8 +506,10 @@ export default function MyJourneyTimeline() {
       if (!unit || unit.groupId !== myGroupId || unit.type !== 'judicial') return
       acts.push({
         key: `phase3_judicial_${unitId}`, phase: 3,
+        type: 'judicial',
         icon: '⚖️', shortTitle: '사법활동',
-        title: unit.role ? `사법부 활동 (${unit.role})` : '사법부 재판/활동', meta: '⚖️ 사법 활동 · 3여정',
+        stepLabel: '사법부 재판/활동',
+        title: unit.role ? `사법부 활동 (${unit.role})` : '사법부 재판/활동',
         content: unit.submission || unit.verdict || '',
       })
     })
@@ -442,8 +519,10 @@ export default function MyJourneyTimeline() {
       if (a.authorStudentId !== myStudentId || a.phase !== 3) return
       acts.push({
         key: `phase3_article_${id}`, phase: 3,
+        type: 'article',
         icon: '📰', shortTitle: '국정기사',
-        title: a.title || '국정 기사', meta: '📰 국정 기사 · 3여정',
+        stepLabel: '국정 기사 보도',
+        title: a.title || '국정 기사',
         content: a.headline ? `[헤드라인] ${a.headline}\n\n${a.body}` : a.body || a.content || '',
       })
     })
@@ -462,8 +541,10 @@ export default function MyJourneyTimeline() {
         }
         acts.push({
           key: `phase3_billvote_${bid}`, phase: 3,
+          type: 'billvote',
           icon: '🏛️', shortTitle: '법안투표',
-          title: `법안 표결 참여: ${billTitle}`, meta: '🏛️ 법안 표결 · 3여정',
+          stepLabel: '국회 법안 의결 투표',
+          title: `법안 표결 참여: ${billTitle}`,
           content: `해당 법안에 대해 [ ${choiceText} ] 투표를 행사했습니다.`,
         })
       }
@@ -476,8 +557,10 @@ export default function MyJourneyTimeline() {
         const choiceText = myChoice === 'pro' ? '찬성/유죄' : '반대/무죄'
         acts.push({
           key: `phase3_juryvote_${cid}`, phase: 3,
+          type: 'juryvote',
           icon: '⚖️', shortTitle: '재판투표',
-          title: `배심원 재판 표결 참여: ${cid}`, meta: '⚖️ 배심원 투표 · 3여정',
+          stepLabel: '사법 재판 배심원 투표',
+          title: `배심원 재판 표결 참여: ${cid}`,
           content: `피고인에 대해 평결 [ ${choiceText} ] 투표를 행사했습니다.`,
         })
       }
@@ -488,9 +571,12 @@ export default function MyJourneyTimeline() {
       if (l.submitterStudentId !== myStudentId || l.type === 'news') return
       acts.push({
         key: `phase3_video_${id}`, phase: 3,
+        type: 'link',
+        link: l,
         icon: '🎬', shortTitle: '영상공유',
-        title: l.title || '공유한 영상/캔바', meta: '🎬 영상/캔바 공유 · 3여정',
-        content: `[제목] ${l.title || ''}\n\n[URL] ${l.url}`,
+        stepLabel: '영상/캔바 자료 공유',
+        title: l.title || '공유한 영상/캔바',
+        content: '',
       })
     })
 
@@ -516,7 +602,7 @@ export default function MyJourneyTimeline() {
         <div className="absolute right-4 top-4 text-6xl opacity-10 select-none">🗺️</div>
         <h2 className="font-black text-xl mb-1">민국에서 나의 발자취 돌아보기</h2>
         <p className="text-pink-100 text-sm">
-          1·2·3여정 내 활동들을 따라가며 각각 별점을 매겨 보세요. (나만 볼 수 있어요)
+          1·2·3여정 내 활동들을 따라가며 각각 별점을 매겨 보세요.
         </p>
         {activities.length > 0 && (
           <div className="mt-3 flex items-center gap-2">
@@ -654,4 +740,3 @@ export default function MyJourneyTimeline() {
     </div>
   )
 }
-

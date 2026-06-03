@@ -91,7 +91,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
               </button>
             </div>
             {ratings[act.key] > 0 && (
-              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50 animate-bounce">
+              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50">
                 평가함: ⭐{ratings[act.key]}점
               </span>
             )}
@@ -158,15 +158,24 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             return (
               <div className="space-y-4">
                 {/* 기호 및 모둠 정보 */}
-                <div className="bg-white/95 border-2 border-rose-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                <div className="bg-white/95 border-2 border-rose-200 rounded-2xl p-5 flex justify-between items-center shadow-md">
                   <div>
-                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black mb-1">
-                      기호 {c.candidateNumber ?? c.leaderNumber}번
-                    </span>
-                    <h4 className="text-base font-black text-gray-900">
-                      {c.leaderNickname || c.candidateName} 후보
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black uppercase tracking-wide shadow-2xs">
+                        기호 {c.candidateNumber ?? c.leaderNumber ?? '?'}번
+                      </span>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider ${
+                        c.status === 'submitted' 
+                          ? 'bg-emerald-55 border-emerald-200 text-emerald-700' 
+                          : 'bg-amber-55 border-amber-200 text-amber-700'
+                      }`}>
+                        {c.status === 'submitted' ? '✓ 최종 제출 완료' : '✍️ 임시 저장 중'}
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-black text-gray-900 flex items-center gap-1">
+                      👑 {c.leaderNickname || c.candidateName || '미지정'} 후보
                     </h4>
-                    {group && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{group.name}</p>}
+                    {group && <p className="text-xs text-rose-500 font-bold mt-1">🏷️ 모둠: {group.name}</p>}
                   </div>
                 </div>
 
@@ -282,15 +291,33 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                     const pct = totalVotes ? Math.round((cnt / totalVotes) * 100) : 0
                     const isMine = myVoteId === o.id
                     return (
-                      <div key={o.id} className="space-y-1">
+                      <div key={o.id} className={`space-y-1.5 p-3 rounded-2xl border transition-all duration-300 ${
+                        isMine 
+                          ? 'bg-indigo-50/80 border-indigo-400/80 ring-2 ring-indigo-100 shadow-md transform scale-[1.01]' 
+                          : 'bg-white/40 border-gray-150'
+                      }`}>
                         <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-                          <span className={isMine ? 'text-indigo-600 font-black' : ''}>
-                            {o.label} {isMine && <span className="text-[9px] bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-1 py-0.5 rounded font-black ml-1">내 선택</span>}
+                          <span className={isMine ? 'text-indigo-700 font-black text-[13px] flex items-center gap-1' : 'flex items-center gap-1'}>
+                            {isMine && <span className="text-indigo-500">✨</span>}
+                            {o.label}
                           </span>
-                          <span className="font-mono text-gray-500">{cnt}표 ({pct}%)</span>
+                          <div className="flex items-center gap-1.5">
+                            {isMine && (
+                              <span className="text-[9px] bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-2 py-0.5 rounded-full font-black shadow-xs tracking-wider">
+                                내 선택
+                              </span>
+                            )}
+                            <span className={`font-mono ${isMine ? 'text-indigo-800 text-sm font-black' : 'text-gray-500'}`}>
+                              {cnt}표 ({pct}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden border">
-                          <div className="h-full bg-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }} />
+                        <div className="relative w-full h-4 bg-gray-150 rounded-full overflow-hidden border border-gray-200">
+                          <div className={`h-full rounded-full transition-all duration-1000 ${
+                            isMine 
+                              ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600' 
+                              : 'bg-indigo-400'
+                          }`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )
@@ -342,21 +369,39 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                       <span>🗳️ 토론 전 입장</span>
                       <span>참여 {preTotal}명</span>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       {options.map((o) => {
                         const cnt = preCounts[o] || 0
                         const pct = preTotal ? Math.round((cnt / preTotal) * 100) : 0
                         const isMine = myPre === o
                         return (
-                          <div key={o} className="space-y-1">
+                          <div key={o} className={`space-y-1.5 p-2 rounded-xl border transition-all duration-300 ${
+                            isMine 
+                              ? 'bg-indigo-50/80 border-indigo-400/80 ring-2 ring-indigo-50 shadow-sm' 
+                              : 'bg-white/40 border-gray-100'
+                          }`}>
                             <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-                              <span className={isMine ? 'text-indigo-600 font-black' : ''}>
-                                {o} {isMine && <span className="text-[9px] bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-1 py-0.5 rounded ml-1">내 선택</span>}
+                              <span className={isMine ? 'text-indigo-700 font-black text-xs flex items-center gap-1' : 'flex items-center gap-1'}>
+                                {isMine && <span className="text-indigo-500">✨</span>}
+                                {o}
                               </span>
-                              <span className="font-mono text-gray-500">{cnt}표 ({pct}%)</span>
+                              <div className="flex items-center gap-1">
+                                {isMine && (
+                                  <span className="text-[8px] bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-1.5 py-0.5 rounded font-black shadow-2xs">
+                                    내 선택
+                                  </span>
+                                )}
+                                <span className={`font-mono ${isMine ? 'text-indigo-800 font-black' : 'text-gray-500'}`}>
+                                  {cnt}표 ({pct}%)
+                                </span>
+                              </div>
                             </div>
-                            <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden border">
-                              <div className={`h-full ${STANCE_COLOR_MAP[o] || 'bg-indigo-400'} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                            <div className="relative w-full h-3 bg-gray-150 rounded-full overflow-hidden border border-gray-100">
+                              <div className={`h-full rounded-full transition-all duration-1000 ${
+                                isMine 
+                                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500' 
+                                  : STANCE_COLOR_MAP[o] || 'bg-indigo-400'
+                              }`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         )
@@ -370,21 +415,39 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                       <span>🗳️ 토론 후 입장</span>
                       <span>참여 {postTotal}명</span>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       {options.map((o) => {
                         const cnt = postCounts[o] || 0
                         const pct = postTotal ? Math.round((cnt / postTotal) * 100) : 0
                         const isMine = myPost === o
                         return (
-                          <div key={o} className="space-y-1">
+                          <div key={o} className={`space-y-1.5 p-2 rounded-xl border transition-all duration-300 ${
+                            isMine 
+                              ? 'bg-indigo-50/80 border-indigo-400/80 ring-2 ring-indigo-50 shadow-sm' 
+                              : 'bg-white/40 border-gray-100'
+                          }`}>
                             <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-                              <span className={isMine ? 'text-indigo-600 font-black' : ''}>
-                                {o} {isMine && <span className="text-[9px] bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-1 py-0.5 rounded ml-1">내 선택</span>}
+                              <span className={isMine ? 'text-indigo-700 font-black text-xs flex items-center gap-1' : 'flex items-center gap-1'}>
+                                {isMine && <span className="text-indigo-500">✨</span>}
+                                {o}
                               </span>
-                              <span className="font-mono text-gray-500">{cnt}표 ({pct}%)</span>
+                              <div className="flex items-center gap-1">
+                                {isMine && (
+                                  <span className="text-[8px] bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-1.5 py-0.5 rounded font-black shadow-2xs">
+                                    내 선택
+                                  </span>
+                                )}
+                                <span className={`font-mono ${isMine ? 'text-indigo-800 font-black' : 'text-gray-500'}`}>
+                                  {cnt}표 ({pct}%)
+                                </span>
+                              </div>
                             </div>
-                            <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden border">
-                              <div className={`h-full ${STANCE_COLOR_MAP[o] || 'bg-indigo-400'} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                            <div className="relative w-full h-3 bg-gray-150 rounded-full overflow-hidden border border-gray-100">
+                              <div className={`h-full rounded-full transition-all duration-1000 ${
+                                isMine 
+                                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500' 
+                                  : STANCE_COLOR_MAP[o] || 'bg-indigo-400'
+                              }`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         )
@@ -409,7 +472,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                       </div>
                     </div>
                     {myPre && myPre !== myPost && (
-                      <p className="text-[10px] text-emerald-600 text-center font-black animate-pulse">
+                      <p className="text-[10px] text-emerald-600 text-center font-black">
                         🔄 토론을 통해 생각이 바뀌었어요!
                       </p>
                     )}
@@ -438,7 +501,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                   <span>🏆 대통령 선거 득표 현황</span>
                   <span>총 투표수 {totalVotes}표</span>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   {ranks.map((r, idx) => {
                     const pct = totalVotes ? Math.round((r.count / totalVotes) * 100) : 0
                     const isMine = myVoteGroupId === r.groupId
@@ -446,17 +509,33 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                     const group = groups?.[r.groupId]
                     
                     return (
-                      <div key={r.groupId} className="space-y-1">
+                      <div key={r.groupId} className={`space-y-1.5 p-3 rounded-2xl border transition-all duration-300 ${
+                        isMine 
+                          ? 'bg-indigo-50/80 border-indigo-400/80 ring-2 ring-indigo-100 shadow-md transform scale-[1.01]' 
+                          : 'bg-white/40 border-gray-150'
+                      }`}>
                         <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-                          <span className={isMine ? 'text-indigo-600 font-black' : ''}>
+                          <span className={isMine ? 'text-indigo-700 font-black text-[13px] flex items-center gap-1' : 'flex items-center gap-1'}>
                             {isWinner && '👑 '}
                             {r.candidateNumber}번 {r.leaderNickname} 후보 ({group?.name || '후보'})
-                            {isMine && <span className="text-[9px] bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-1 py-0.5 rounded ml-1 font-black">내 투표</span>}
                           </span>
-                          <span className="font-mono text-gray-500">{r.count}표 ({pct}%)</span>
+                          <div className="flex items-center gap-1.5">
+                            {isMine && (
+                              <span className="text-[9px] bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-2 py-0.5 rounded-full font-black shadow-xs">
+                                내 투표
+                              </span>
+                            )}
+                            <span className={`font-mono ${isMine ? 'text-indigo-800 text-sm font-black' : 'text-gray-500'}`}>
+                              {r.count}표 ({pct}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="relative w-full h-3.5 bg-gray-100 rounded-full overflow-hidden border">
-                          <div className="h-full bg-rose-500 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }} />
+                        <div className="relative w-full h-4 bg-gray-150 rounded-full overflow-hidden border border-gray-200">
+                          <div className={`h-full rounded-full transition-all duration-1000 ${
+                            isMine 
+                              ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600' 
+                              : 'bg-rose-500'
+                          }`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )
@@ -489,21 +568,38 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                   <span>🏛️ 법안 표결 집계</span>
                   <span>총 {totalVotes}표</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {options.map((o) => {
                     const cnt = counts[o.id] || 0
                     const pct = totalVotes ? Math.round((cnt / totalVotes) * 100) : 0
                     const isMine = myChoice === o.id
                     return (
-                      <div key={o.id} className="space-y-1">
+                      <div key={o.id} className={`space-y-1.5 p-3 rounded-2xl border transition-all duration-300 ${
+                        isMine 
+                          ? 'bg-indigo-50/80 border-indigo-400/80 ring-2 ring-indigo-100 shadow-md transform scale-[1.01]' 
+                          : 'bg-white/40 border-gray-150'
+                      }`}>
                         <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-                          <span className={isMine ? 'text-indigo-600 font-black' : ''}>
-                            {o.label} {isMine && <span className="text-[9px] bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-1 py-0.5 rounded ml-1 font-black">내 투표</span>}
+                          <span className={isMine ? 'text-indigo-700 font-black text-[13px] flex items-center gap-1' : 'flex items-center gap-1'}>
+                            {o.label}
                           </span>
-                          <span className="font-mono text-gray-500">{cnt}표 ({pct}%)</span>
+                          <div className="flex items-center gap-1.5">
+                            {isMine && (
+                              <span className="text-[9px] bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-2 py-0.5 rounded-full font-black shadow-xs">
+                                내 투표
+                              </span>
+                            )}
+                            <span className={`font-mono ${isMine ? 'text-indigo-800 text-sm font-black' : 'text-gray-500'}`}>
+                              {cnt}표 ({pct}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden border">
-                          <div className={`h-full ${o.bg} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                        <div className="relative w-full h-4 bg-gray-150 rounded-full overflow-hidden border border-gray-200">
+                          <div className={`h-full rounded-full transition-all duration-1000 ${
+                            isMine 
+                              ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+                              : o.bg
+                          }`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )
@@ -535,21 +631,38 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                   <span>⚖️ 배심원 평결 집계</span>
                   <span>총 {totalVotes}표</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {options.map((o) => {
                     const cnt = counts[o.id] || 0
                     const pct = totalVotes ? Math.round((cnt / totalVotes) * 100) : 0
                     const isMine = myChoice === o.id
                     return (
-                      <div key={o.id} className="space-y-1">
+                      <div key={o.id} className={`space-y-1.5 p-3 rounded-2xl border transition-all duration-300 ${
+                        isMine 
+                          ? 'bg-indigo-50/80 border-indigo-400/80 ring-2 ring-indigo-100 shadow-md transform scale-[1.01]' 
+                          : 'bg-white/40 border-gray-150'
+                      }`}>
                         <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-                          <span className={isMine ? 'text-indigo-600 font-black' : ''}>
-                            {o.label} {isMine && <span className="text-[9px] bg-indigo-50 border border-indigo-200/50 text-indigo-700 px-1 py-0.5 rounded ml-1 font-black">내 투표</span>}
+                          <span className={isMine ? 'text-indigo-700 font-black text-[13px] flex items-center gap-1' : 'flex items-center gap-1'}>
+                            {o.label}
                           </span>
-                          <span className="font-mono text-gray-500">{cnt}표 ({pct}%)</span>
+                          <div className="flex items-center gap-1.5">
+                            {isMine && (
+                              <span className="text-[9px] bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-2 py-0.5 rounded-full font-black shadow-xs">
+                                내 투표
+                              </span>
+                            )}
+                            <span className={`font-mono ${isMine ? 'text-indigo-800 text-sm font-black' : 'text-gray-500'}`}>
+                              {cnt}표 ({pct}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden border">
-                          <div className={`h-full ${o.bg} rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                        <div className="relative w-full h-4 bg-gray-150 rounded-full overflow-hidden border border-gray-200">
+                          <div className={`h-full rounded-full transition-all duration-1000 ${
+                            isMine 
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500' 
+                              : o.bg
+                          }`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )
@@ -596,7 +709,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
 }
 
 // ── Snake 경로 커넥터 (행 사이 U/N 곡선)
-function SnakeConnector({ direction }) {
+function SnakeConnector({ direction, color = '#d1d5db' }) {
   return (
     <div className="flex items-stretch my-0" style={{ height: 48 }}>
       {direction === 'right' ? (
@@ -604,8 +717,8 @@ function SnakeConnector({ direction }) {
           <div className="flex-1" />
           <div style={{
             width: 40, height: 48,
-            borderRight: '3px dashed #d1d5db',
-            borderBottom: '3px dashed #d1d5db',
+            borderRight: `3px dashed ${color}`,
+            borderBottom: `3px dashed ${color}`,
             borderBottomRightRadius: 24,
           }} />
         </>
@@ -613,8 +726,8 @@ function SnakeConnector({ direction }) {
         <>
           <div style={{
             width: 40, height: 48,
-            borderLeft: '3px dashed #d1d5db',
-            borderBottom: '3px dashed #d1d5db',
+            borderLeft: `3px dashed ${color}`,
+            borderBottom: `3px dashed ${color}`,
             borderBottomLeftRadius: 24,
           }} />
           <div className="flex-1" />
@@ -629,32 +742,35 @@ function Node({ act, index, ratings, isActive, onClick }) {
   const meta = PHASE_META[act.phase]
   const score = ratings[act.key] || 0
   return (
-    <div className="flex flex-col items-center gap-1.5 relative" style={{ minWidth: 64 }}>
-      {/* 번호 */}
-      <span className="text-[10px] font-bold text-gray-400">{index + 1}</span>
+    <div className="flex flex-col items-center gap-2 relative animate-fade-in" style={{ minWidth: 76 }}>
+      {/* 여정과 단계 표시 */}
+      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border transition-all duration-200"
+        style={{ background: meta.bg, borderColor: meta.color, color: meta.text }}>
+        {act.phase}여정 · {act.phaseStep}단계
+      </span>
 
       {/* 원형 노드 */}
       <button
         onClick={() => onClick(index)}
-        className="relative w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-md transition-all duration-200 hover:scale-110 focus:outline-none"
+        className="relative w-15 h-15 rounded-full flex items-center justify-center text-3xl shadow-md transition-all duration-300 hover:scale-115 hover:shadow-lg focus:outline-none cursor-pointer"
         style={{
-          background: isActive ? meta.color : meta.bg,
-          border: `3px solid ${meta.color}`,
-          boxShadow: isActive ? `0 0 0 4px ${meta.color}44` : undefined,
+          background: isActive ? meta.color : `linear-gradient(135deg, #ffffff 0%, ${meta.bg} 100%)`,
+          border: `3px solid ${isActive ? '#ffffff' : meta.color}`,
+          boxShadow: isActive ? `0 0 14px 4px ${meta.color}77` : '0 4px 6px -1px rgba(0,0,0,0.08)',
         }}
         title={act.title}
       >
-        <span>{act.icon}</span>
+        <span className={isActive ? 'scale-110 transition-transform duration-300' : ''}>{act.icon}</span>
         {/* 별점 표시 (알약 모양 ⭐ 뱃지) */}
         {score > 0 && (
-          <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full bg-yellow-400 text-white text-[9px] font-black flex items-center gap-0.5 shadow-md border border-white animate-pulse">
+          <span className="absolute -top-1 -right-2 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-white text-[9px] font-black flex items-center gap-0.5 shadow-md border border-white">
             ⭐{score}
           </span>
         )}
       </button>
 
       {/* 짧은 제목 */}
-      <span className="text-[10px] text-center text-gray-600 font-bold leading-tight max-w-[64px] line-clamp-2">
+      <span className="text-[10px] text-center text-gray-700 font-extrabold leading-tight max-w-[76px] line-clamp-2 px-0.5">
         {act.shortTitle}
       </span>
     </div>
@@ -662,12 +778,12 @@ function Node({ act, index, ratings, isActive, onClick }) {
 }
 
 // ── 행 간 연결선
-function HConnector({ reversed }) {
+function HConnector({ reversed, color = '#d1d5db' }) {
   return (
     <div className="flex-1 flex items-center mx-1" style={{ minWidth: 8, maxWidth: 32 }}>
-      <div className="w-full border-t-2 border-dashed border-gray-300" />
-      {!reversed && <span className="text-gray-300 text-xs ml-0.5">›</span>}
-      {reversed  && <span className="text-gray-300 text-xs mr-0.5 order-first">‹</span>}
+      <div className="w-full border-t-3 border-dashed" style={{ borderColor: color }} />
+      {!reversed && <span className="text-xs ml-0.5 font-bold" style={{ color }}>›</span>}
+      {reversed  && <span className="text-xs mr-0.5 order-first font-bold" style={{ color }}>‹</span>}
     </div>
   )
 }
@@ -822,14 +938,16 @@ export default function MyJourneyTimeline() {
     // 2-1. 후보 등록
     if (myGroupId && candidates[myGroupId]) {
       const c = candidates[myGroupId]
+      const candName = c.leaderNickname || c.candidateName
       acts.push({
         key: 'phase2_candidate', phase: 2,
         type: 'candidate',
         candidate: c,
-        icon: '🗳️', shortTitle: '후보등록',
+        icon: '🗳️', 
+        shortTitle: candName ? `후보: ${candName}` : '후보등록',
         stepLabel: '대통령 후보 등록',
-        title: c.candidateName || c.leaderNickname ? `후보: ${c.candidateName || c.leaderNickname}` : '대통령 후보 등록',
-        content: '',
+        title: candName ? `대통령 후보 등록 (${candName})` : '대통령 후보 등록',
+        content: c.pamphlet ? `[출마선언문]\n${c.pamphlet}` : '대통령 후보 등록 완료',
       })
     }
 
@@ -1015,7 +1133,17 @@ export default function MyJourneyTimeline() {
       })
     })
 
-    return acts
+    // 여정별 단계 번호 (phaseStep) 동적 부여
+    const phaseCounts = { 1: 0, 2: 0, 3: 0 }
+    const processedActs = acts.map(act => {
+      phaseCounts[act.phase]++
+      return {
+        ...act,
+        phaseStep: phaseCounts[act.phase]
+      }
+    })
+
+    return processedActs
   }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, debateSessions, myStudentId, myGroupId, groups])
 
   // Snake 행으로 분할
@@ -1027,10 +1155,30 @@ export default function MyJourneyTimeline() {
     return result
   }, [activities])
 
+  const phaseCompleted = useMemo(() => {
+    const comp = { 1: false, 2: false, 3: false }
+    for (const p of [1, 2, 3]) {
+      const pActs = activities.filter(a => a.phase === p)
+      if (pActs.length > 0) {
+        comp[p] = pActs.every(a => (ratings[a.key] || 0) > 0)
+      }
+    }
+    return comp
+  }, [activities, ratings])
+
   const totalRated = Object.values(ratings).filter((v) => v > 0).length
 
   return (
     <div className="space-y-5">
+      <style>{`
+        @keyframes pulse-subtle {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.88; transform: scale(1.003); }
+        }
+        .animate-pulse-subtle {
+          animation: pulse-subtle 2.5s infinite ease-in-out;
+        }
+      `}</style>
       {/* 헤더 */}
       <div className="rounded-3xl p-5 text-white relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #6366f1 100%)' }}>
@@ -1056,10 +1204,15 @@ export default function MyJourneyTimeline() {
       <div className="flex flex-wrap gap-2">
         {[1, 2, 3].map((p) => {
           const m = PHASE_META[p]
+          const isCompleted = phaseCompleted[p]
           return (
-            <span key={p} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full"
-              style={{ background: m.bg, border: `1.5px solid ${m.border}`, color: m.text }}>
-              {m.emoji} {m.label}
+            <span key={p} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full shadow-2xs transition-all"
+              style={{ 
+                background: isCompleted ? '#f0fdf4' : m.bg, 
+                border: isCompleted ? '1.5px solid #bbf7d0' : `1.5px solid ${m.border}`, 
+                color: isCompleted ? '#166534' : m.text 
+              }}>
+              {isCompleted ? '✅' : m.emoji} {m.label} {isCompleted && '(완료)'}
             </span>
           )
         })}
@@ -1092,15 +1245,23 @@ export default function MyJourneyTimeline() {
                     if (act.phase !== prevPhase && !seen.has(act.phase)) {
                       seen.add(act.phase)
                       const m = PHASE_META[act.phase]
+                      const isCompleted = phaseCompleted[act.phase]
                       labels.push(
                         <div key={act.phase} className="flex items-center gap-2 mb-3 mt-4 px-3 py-2 rounded-2xl shadow-sm border animate-in fade-in duration-300"
-                          style={{ background: m.bg, borderColor: m.border }}>
-                          <span className="text-xl animate-bounce">{m.emoji}</span>
+                          style={{ 
+                            background: isCompleted ? '#f0fdf4' : m.bg, 
+                            borderColor: isCompleted ? '#bbf7d0' : m.border 
+                          }}>
+                          <span className="text-xl">{isCompleted ? '✅' : m.emoji}</span>
                           <div className="flex flex-col">
-                            <span className="text-xs font-black" style={{ color: m.text }}>{m.label}</span>
-                            <span className="text-[10px] opacity-75 font-semibold text-gray-500">{m.sub} 단계 활동 시작 🚀</span>
+                            <span className="text-xs font-black" style={{ color: isCompleted ? '#166534' : m.text }}>
+                              {m.label} {isCompleted && <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black ml-1">평가 완료</span>}
+                            </span>
+                            <span className="text-[10px] opacity-75 font-semibold text-gray-500">
+                              {isCompleted ? '🎉 이 여정의 모든 활동 평가를 완료했습니다!' : `${m.sub} 단계 활동 시작 🚀`}
+                            </span>
                           </div>
-                          <div className="flex-1 h-[2px] border-t border-dashed" style={{ borderColor: m.border }} />
+                          <div className="flex-1 h-[2px] border-t border-dashed" style={{ borderColor: isCompleted ? '#bbf7d0' : m.border }} />
                         </div>
                       )
                     }
@@ -1114,6 +1275,7 @@ export default function MyJourneyTimeline() {
                     const globalIdx = reversed
                       ? rowStart + (row.length - 1 - colIdx)
                       : rowStart + colIdx
+                    const currentMeta = PHASE_META[act.phase]
                     return (
                       <div key={act.key} className="flex items-center" style={{ flex: 1, minWidth: 0 }}>
                         <div className="flex flex-col items-center" style={{ flex: 1 }}>
@@ -1127,7 +1289,7 @@ export default function MyJourneyTimeline() {
                         </div>
                         {/* 수평 연결선 */}
                         {colIdx < displayRow.length - 1 && (
-                          <HConnector reversed={reversed} />
+                          <HConnector reversed={reversed} color={currentMeta?.color} />
                         )}
                       </div>
                     )
@@ -1139,7 +1301,11 @@ export default function MyJourneyTimeline() {
                 </div>
 
                 {/* 행 사이 꺾임 커넥터 */}
-                {rowIdx < rows.length - 1 && <SnakeConnector direction={turnDir} />}
+                {rowIdx < rows.length - 1 && (() => {
+                  const lastAct = reversed ? row[0] : row[row.length - 1]
+                  const lastMeta = PHASE_META[lastAct?.phase || 1]
+                  return <SnakeConnector direction={turnDir} color={lastMeta?.color} />
+                })()}
               </div>
             )
           })}

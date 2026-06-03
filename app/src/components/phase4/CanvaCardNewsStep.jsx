@@ -855,48 +855,46 @@ export default function CanvaCardNewsStep() {
             </a>
           </div>
           <div className="bg-white border border-violet-200 rounded-2xl p-5 space-y-4 shadow-sm">
-            <div className="border-b border-violet-100 pb-2">
-              <h3 className="font-black text-violet-850 text-sm flex items-center gap-1.5">
-                <span>📎</span> 캔바 임베드 코드 제출
-              </h3>
-              <p className="text-[10px] text-gray-500 mt-0.5 font-medium leading-relaxed">
-                5단계 갤러리워크에서 친구들이 내 카드뉴스를 바로 감상할 수 있도록, 반드시 <strong>임베드(Embed) 코드</strong>를 가져와서 넣어주세요!
-              </p>
-            </div>
-
-
-            {/* 임베드 코드 복사 방법 가이드 (접기/펼치기) */}
-            <div className="bg-violet-50/50 rounded-xl border border-violet-100 text-xs text-violet-950 font-medium overflow-hidden">
+            <div className="border-b border-violet-100 pb-2.5">
               <button
                 type="button"
                 onClick={() => setShowEmbedGuide(!showEmbedGuide)}
-                className="w-full text-left px-3.5 py-2.5 font-bold text-violet-850 text-[11px] flex items-center justify-between hover:bg-violet-100/30 transition cursor-pointer"
+                className="w-full text-left flex items-center justify-between hover:bg-violet-50/50 p-2 rounded-xl transition cursor-pointer"
               >
-                <span className="flex items-center gap-1">
-                  <span>💡</span> 캔바에서 임베드 코드 복사하는 방법
-                </span>
-                <span className="text-[10px] text-violet-600 font-bold shrink-0">
-                  {showEmbedGuide ? '접기 ▴' : '방법 보기 ▾'}
+                <div className="min-w-0 pr-2">
+                  <h3 className="font-black text-violet-850 text-sm flex items-center gap-1.5">
+                    <span>📎</span> 캔바 임베드 코드 제출
+                  </h3>
+                  <p className="text-[10px] text-gray-500 mt-0.5 font-bold leading-relaxed">
+                    갤러리워크에서 카드뉴스가 바로 보이게 제출하기
+                  </p>
+                </div>
+                <span className="text-[10px] text-violet-600 font-bold shrink-0 bg-violet-50 border border-violet-200/50 px-2.5 py-1 rounded-full shadow-2xs">
+                  {showEmbedGuide ? '안내 접기 ▴' : '방법 보기 ▾'}
                 </span>
               </button>
-
-              {showEmbedGuide && (
-                <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-violet-100/40 animate-in fade-in duration-200">
-                  <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-gray-700 pl-0.5">
-                    <li>Canva 편집 화면 우측 상단의 <strong className="text-violet-850">우측 [공유]</strong> 버튼을 누릅니다.</li>
-                    <li>아래 메뉴 중 <strong className="text-violet-850">[더 보기](점 3개 •••)</strong>를 누릅니다.</li>
-                    <li>목록에서 <strong className="text-violet-850">[임베디드]</strong> 아이콘( <code className="bg-violet-100 text-violet-800 px-1 py-0.2 rounded font-mono font-bold text-[9px]">&lt;/&gt;</code> 모양 )을 선택합니다.</li>
-                    <li>활성화 후, <strong className="text-violet-850">‘HTML 임베디드 코드’</strong>의 <strong className="text-violet-900">[복사]</strong>를 누릅니다.</li>
-                  </ol>
-                  <div className="text-[10px] bg-amber-50/70 text-amber-800 border border-amber-200/50 p-2 rounded-lg leading-relaxed mt-1 flex items-start gap-1">
-                    <span className="shrink-0 mt-0.5">⚠️</span>
-                    <span>
-                      브라우저 주소창의 링크(canva.com/design/...)나 일반 [링크 복사] 주소는 갤러리에서 정상 동작하지 않을 수 있으니 꼭 <strong>임베디드 코드</strong>를 붙여넣어 주세요!
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
+
+            {/* 임베드 코드 복사 방법 가이드 (접기/펼치기) */}
+            {showEmbedGuide && (
+              <div className="bg-violet-50/50 rounded-xl p-3.5 border border-violet-100 text-xs space-y-2.5 text-violet-950 font-medium animate-in fade-in duration-200">
+                <p className="font-bold text-violet-850 text-[11px] flex items-center gap-1">
+                  <span>💡</span> 캔바에서 임베드 코드 복사하는 방법:
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-gray-700 pl-0.5">
+                  <li>Canva 편집 화면 우측 상단의 <strong className="text-violet-850">우측 [공유]</strong> 버튼을 누릅니다.</li>
+                  <li>아래 메뉴 중 <strong className="text-violet-850">[더 보기](점 3개 •••)</strong>를 누릅니다.</li>
+                  <li>목록에서 <strong className="text-violet-850">[임베디드]</strong> 아이콘( <code className="bg-violet-100 text-violet-800 px-1 py-0.2 rounded font-mono font-bold text-[9px]">&lt;/&gt;</code> 모양 )을 선택합니다.</li>
+                  <li>활성화 후, <strong className="text-violet-850">‘HTML 임베디드 코드’</strong>의 <strong className="text-violet-900">[복사]</strong>를 누릅니다.</li>
+                </ol>
+                <div className="text-[10px] bg-amber-50/70 text-amber-800 border border-amber-200/50 p-2.5 rounded-lg leading-relaxed mt-1 flex items-start gap-1 font-semibold">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  <span>
+                    브라우저 주소창의 링크(canva.com/design/...)나 일반 [링크 복사] 주소는 갤러리에서 정상 동작하지 않을 수 있으니 꼭 <strong>임베디드 코드</strong>를 붙여넣어 주세요!
+                  </span>
+                </div>
+              </div>
+            )}
 
                         <div className="space-y-1.5">
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">✍️ 임베디드 코드 입력</span>

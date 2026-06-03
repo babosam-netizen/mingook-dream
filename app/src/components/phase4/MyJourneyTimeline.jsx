@@ -16,6 +16,7 @@ const PHASE_META = {
   1: { label: '첫 번째 여정', sub: '시민 광장', emoji: '🏙️', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', text: '#92400e' },
   2: { label: '두 번째 여정', sub: '선거',      emoji: '🗳️', color: '#f43f5e', bg: '#fff1f2', border: '#fecdd3', text: '#9f1239' },
   3: { label: '세 번째 여정', sub: '국정 포털', emoji: '🏛️', color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', text: '#1e293b' },
+  4: { label: '네 번째 여정', sub: '시사회',    emoji: '🎬', color: '#ec4899', bg: '#fdf2f8', border: '#fbcfe8', text: '#9d174d' },
 }
 
 const COLS = 4 // 한 행에 놓이는 노드 수
@@ -673,14 +674,50 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
           })()}
 
           {/* 9. 일반 텍스트 콘텐츠 */}
-          {act.content ? (
+          {act.content && act.type !== 'comment' ? (
             <div className="rounded-2xl p-5 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-gray-100 max-h-[30vh] overflow-y-auto"
               style={{ background: 'rgba(255,255,255,0.75)' }}>
               {act.content}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-400 text-xs animate-pulse">
-              {!act.content && act.type !== 'candidate' && '상세 활동 내용이 없습니다.'}
+            <div className="text-center py-8 text-gray-400 text-xs select-none">
+              {!act.content && act.type !== 'candidate' && act.type !== 'comment' && '상세 활동 내용이 없습니다.'}
+            </div>
+          )}
+
+          {/* 10. 댓글 및 다축 평가 상세 시각화 */}
+          {act.type === 'comment' && (
+            <div className="space-y-3.5">
+              <div className="bg-white/90 border border-indigo-150 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">💬 댓글이 달린 원글</p>
+                <h4 className="text-sm font-black text-indigo-900 leading-snug">
+                  {act.targetTitle}
+                </h4>
+              </div>
+              
+              {act.ratings && Object.keys(act.ratings).length > 0 && (
+                <div className="bg-white/90 border rounded-2xl p-4 shadow-sm space-y-2">
+                  <p className="text-[10px] font-bold text-gray-500">📊 내가 매긴 3축 평가 점수</p>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    {Object.entries(act.ratings).map(([axis, val]) => {
+                      const labelMap = { relevance: '공익/정확', feasibility: '실행/배려', logic: '타당/설득' }
+                      return (
+                        <div key={axis} className="bg-slate-50 border p-2 rounded-xl">
+                          <span className="block text-[9px] text-gray-400 font-bold mb-0.5">{labelMap[axis] || axis}</span>
+                          <span className="font-mono text-amber-550 font-black text-sm">★ {val}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 shadow-inner">
+                <span className="block text-[9px] font-bold text-indigo-700 uppercase tracking-wider mb-1">✍️ 작성한 댓글 내용</span>
+                <p className="text-sm leading-relaxed text-indigo-950 font-bold">
+                  "{act.commentBody}"
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -814,6 +851,8 @@ export default function MyJourneyTimeline() {
   const [billVotes,       setBillVotes]       = useState({})
   const [juryVotes,       setJuryVotes]       = useState({})
   const [debateSessions,  setDebateSessions]  = useState({})
+  const [commentsMap,     setCommentsMap]     = useState({})
+  const [reflectionsMap,  setReflectionsMap]  = useState({})
   const [ratings,         setRatings]         = useState({})
   const [savingKey,  setSavingKey]  = useState(null)
   const [activeIdx,  setActiveIdx]  = useState(null)
@@ -834,6 +873,8 @@ export default function MyJourneyTimeline() {
       subscribe(roomCode, 'billVotes',         (d) => setBillVotes(d || {})),
       subscribe(roomCode, 'juryVotes',         (d) => setJuryVotes(d || {})),
       subscribe(roomCode, 'debateSessions',    (d) => setDebateSessions(d || {})),
+      subscribe(roomCode, 'comments',          (d) => setCommentsMap(d || {})),
+      subscribe(roomCode, 'reflections',       (d) => setReflectionsMap(d || {})),
     ]
     return () => subs.forEach((u) => u?.())
   }, [roomCode])
@@ -1133,8 +1174,62 @@ export default function MyJourneyTimeline() {
       })
     })
 
+    // ── 4. 내가 작성한 댓글 및 동료 평가 ──
+    Object.entries(commentsMap).forEach(([cid, c]) => {
+      if (c.authorStudentId !== myStudentId || c.parentId) return
+      
+      let targetTitle = '원글 자료'
+      let phase = 1
+      
+      if (c.targetType === 'poster') {
+        const p = posters[c.targetId]
+        targetTitle = p ? `🖼️ 포스터: "${p.title || p.caption || '제목 없음'}"` : '🖼️ 친구의 포스터'
+        phase = p?.phase || 1
+      } else if (c.targetType === 'article') {
+        const a = articles[c.targetId]
+        targetTitle = a ? `📰 기사: "${a.title || '제목 없음'}"` : '📰 친구의 기사'
+        phase = a?.phase || 2
+      } else if (c.targetType === 'bill') {
+        let matchedTitle = ''
+        for (const unit of Object.values(branchData)) {
+          if (unit.type === 'legislative' && unit.bills) {
+            const bill = Object.values(unit.bills).find(b => b.id === c.targetId || b.title === c.targetId)
+            if (bill) { matchedTitle = bill.title; break }
+          }
+        }
+        targetTitle = matchedTitle ? `🏛️ 법안: "${matchedTitle}"` : `🏛️ 의회 법안: ${c.targetId}`
+        phase = 3
+      } else if (c.targetType === 'trial') {
+        targetTitle = `⚖️ 사법 재판: ${c.targetId}`
+        phase = 3
+      } else if (c.targetType === 'policy') {
+        const unit = branchData[c.targetId]
+        targetTitle = unit ? `🏢 행정 정책: "${unit.ministryName || '정책'}"` : `🏢 행정 정책`
+        phase = 3
+      } else if (c.targetType === 'reflection') {
+        const r = reflectionsMap[c.targetId]
+        targetTitle = r ? `📝 정리글: "${r.title || '친구의 글'}"` : '📝 친구의 정리글'
+        phase = 4
+      }
+
+      acts.push({
+        key: `comment_${cid}`,
+        phase,
+        type: 'comment',
+        icon: '💬',
+        shortTitle: '댓글 작성',
+        stepLabel: '동료 평가 및 댓글 작성',
+        title: `💬 동료 자료에 남긴 댓글`,
+        targetTitle,
+        commentBody: c.body,
+        ratings: c.ratings || {},
+        targetType: c.targetType,
+        content: `내가 남긴 동료 평가 의견:\n"${c.body}"`
+      })
+    })
+
     // 여정별 단계 번호 (phaseStep) 동적 부여
-    const phaseCounts = { 1: 0, 2: 0, 3: 0 }
+    const phaseCounts = { 1: 0, 2: 0, 3: 0, 4: 0 }
     const processedActs = acts.map(act => {
       phaseCounts[act.phase]++
       return {
@@ -1144,7 +1239,7 @@ export default function MyJourneyTimeline() {
     })
 
     return processedActs
-  }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, debateSessions, myStudentId, myGroupId, groups])
+  }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, debateSessions, commentsMap, reflectionsMap, myStudentId, myGroupId, groups])
 
   // Snake 행으로 분할
   const rows = useMemo(() => {
@@ -1202,7 +1297,7 @@ export default function MyJourneyTimeline() {
 
       {/* 여정 범례 */}
       <div className="flex flex-wrap gap-2">
-        {[1, 2, 3].map((p) => {
+        {[1, 2, 3, 4].map((p) => {
           const m = PHASE_META[p]
           const isCompleted = phaseCompleted[p]
           return (

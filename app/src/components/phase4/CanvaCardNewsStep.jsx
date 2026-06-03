@@ -9,6 +9,7 @@ import { calculateRanks } from '../../lib/election'
  * 2단계: 캔바 카드뉴스 제작 + URL 제출
  * - 1단계에서 별점 준 상위 활동 3개 참고 목록 표시 (누르면 아코디언으로 본문/투표결과/미디어 전체 펼침)
  * - 캔바 링크 자료는 단순 링크 텍스트가 아닌 Canva Embed iframe으로 자동 렌더링
+ * - 내가 작성한 동료 평가 댓글(원글 제목 노출 및 제목 클릭 시 내용 펼침) 수집 및 시각화 지원
  * - Canva 바로가기 버튼 + 제작 가이드
  * - URL/embed 제출 + 미리보기
  */
@@ -39,6 +40,8 @@ export default function CanvaCardNewsStep() {
   const [billVotes,       setBillVotes]       = useState({})
   const [juryVotes,       setJuryVotes]       = useState({})
   const [debateSessions,  setDebateSessions]  = useState({})
+  const [commentsMap,     setCommentsMap]     = useState({})
+  const [reflectionsMap,  setReflectionsMap]  = useState({})
 
   const [canvaInput, setCanvaInput] = useState('')
   const [savedUrl, setSavedUrl] = useState('')
@@ -71,6 +74,8 @@ export default function CanvaCardNewsStep() {
       subscribe(roomCode, 'billVotes',         (d) => setBillVotes(d || {})),
       subscribe(roomCode, 'juryVotes',         (d) => setJuryVotes(d || {})),
       subscribe(roomCode, 'debateSessions',    (d) => setDebateSessions(d || {})),
+      subscribe(roomCode, 'comments',          (d) => setCommentsMap(d || {})),
+      subscribe(roomCode, 'reflections',       (d) => setReflectionsMap(d || {})),
     ]
     return () => subs.forEach((u) => u?.())
   }, [roomCode, myStudentId])
@@ -349,8 +354,62 @@ export default function CanvaCardNewsStep() {
       })
     })
 
+    // ── 4. 내가 작성한 댓글 및 동료 평가 ──
+    Object.entries(commentsMap).forEach(([cid, c]) => {
+      if (c.authorStudentId !== myStudentId || c.parentId) return
+      
+      let targetTitle = '원글 자료'
+      let phase = 1
+      
+      if (c.targetType === 'poster') {
+        const p = posters[c.targetId]
+        targetTitle = p ? `🖼️ 포스터: "${p.title || p.caption || '제목 없음'}"` : '🖼️ 친구의 포스터'
+        phase = p?.phase || 1
+      } else if (c.targetType === 'article') {
+        const a = articles[c.targetId]
+        targetTitle = a ? `📰 기사: "${a.title || '제목 없음'}"` : '📰 친구의 기사'
+        phase = a?.phase || 2
+      } else if (c.targetType === 'bill') {
+        let matchedTitle = ''
+        for (const unit of Object.values(branchData)) {
+          if (unit.type === 'legislative' && unit.bills) {
+            const bill = Object.values(unit.bills).find(b => b.id === c.targetId || b.title === c.targetId)
+            if (bill) { matchedTitle = bill.title; break }
+          }
+        }
+        targetTitle = matchedTitle ? `🏛️ 법안: "${matchedTitle}"` : `🏛️ 의회 법안: ${c.targetId}`
+        phase = 3
+      } else if (c.targetType === 'trial') {
+        targetTitle = `⚖️ 사법 재판: ${c.targetId}`
+        phase = 3
+      } else if (c.targetType === 'policy') {
+        const unit = branchData[c.targetId]
+        targetTitle = unit ? `🏢 행정 정책: "${unit.ministryName || '정책'}"` : `🏢 행정 정책`
+        phase = 3
+      } else if (c.targetType === 'reflection') {
+        const r = reflectionsMap[c.targetId]
+        targetTitle = r ? `📝 정리글: "${r.title || '친구의 글'}"` : '📝 친구의 정리글'
+        phase = 4
+      }
+
+      acts.push({
+        key: `comment_${cid}`,
+        phase,
+        type: 'comment',
+        icon: '💬',
+        shortTitle: '댓글 작성',
+        stepLabel: '동료 평가 및 댓글 작성',
+        title: `💬 동료 자료에 남긴 댓글`,
+        targetTitle,
+        commentBody: c.body,
+        ratings: c.ratings || {},
+        targetType: c.targetType,
+        content: `내가 남긴 동료 평가 의견:\n"${c.body}"`
+      })
+    })
+
     // 여정별 단계 번호 (phaseStep) 동적 부여
-    const phaseCounts = { 1: 0, 2: 0, 3: 0 }
+    const phaseCounts = { 1: 0, 2: 0, 3: 0, 4: 0 }
     const processedActs = acts.map(act => {
       phaseCounts[act.phase]++
       return {
@@ -360,7 +419,7 @@ export default function CanvaCardNewsStep() {
     })
 
     return processedActs
-  }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, debateSessions, myStudentId, myGroupId, groups])
+  }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, debateSessions, commentsMap, reflectionsMap, myStudentId, myGroupId, groups])
 
   // 상위 별점 활동 4개 계산
   const topActivities = useMemo(() => {
@@ -715,8 +774,37 @@ export default function CanvaCardNewsStep() {
                             )
                           })()}
 
-                          {/* 9. 본문 텍스트 콘텐츠 */}
-                          {act.content && (
+                          {/* 9. 내가 작성한 댓글 및 동료 평가 상세 피드 */}
+                          {act.type === 'comment' && (
+                            <div className="space-y-2.5 max-w-sm">
+                              <div className="bg-white p-3 rounded-xl border shadow-2xs">
+                                <span className="text-[9px] font-bold text-gray-400 block mb-1">💬 댓글 대상 원글</span>
+                                <p className="font-extrabold text-gray-800 text-xs">{act.targetTitle}</p>
+                              </div>
+                              
+                              {act.ratings && Object.keys(act.ratings).length > 0 && (
+                                <div className="bg-white p-3 rounded-xl border grid grid-cols-3 gap-1.5 text-center text-[10px] shadow-2xs">
+                                  {Object.entries(act.ratings).map(([axis, val]) => {
+                                    const labelMap = { relevance: '공익/정확', feasibility: '실행/배려', logic: '타당/설득' }
+                                    return (
+                                      <div key={axis} className="bg-slate-50 border rounded-lg p-1.5">
+                                        <span className="block text-[8px] text-gray-400 font-bold mb-0.5">{labelMap[axis] || axis}</span>
+                                        <span className="font-mono text-amber-500 font-black">★ {val}</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+
+                              <div className="p-3 bg-white rounded-xl border leading-relaxed text-xs shadow-2xs">
+                                <span className="font-bold text-indigo-700 block mb-1">✍️ 작성한 댓글:</span>
+                                <p className="font-semibold text-gray-800">"{act.commentBody}"</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 10. 본문 텍스트 콘텐츠 */}
+                          {act.content && act.type !== 'comment' && (
                             <div className="p-3 bg-white rounded-xl border leading-relaxed text-xs whitespace-pre-wrap shadow-2xs">
                               {act.content}
                             </div>

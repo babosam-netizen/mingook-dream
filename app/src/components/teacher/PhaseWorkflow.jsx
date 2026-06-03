@@ -63,12 +63,12 @@ export const PHASE_STEPS = {
     { id: 'poll4',               session: '18차시', label: '사법 ⑦ 사후 여론조사 — 판결에 대한 평가', hint: '판결 결과에 대한 시민 평가를 여론조사로 받습니다.',                       highlight: 'poll',     studentLabel: '사법 ⑦ 사후 여론조사', stage: 6, showSummary: true },
   ],
   4: [
-    { id: 'timeline',  session: '19차시',      label: '1단계 — 나의 여정 타임라인 + 별점 자율평가',   hint: '1·2·3 여정에서 본인이 한 활동을 돌아보며 각 활동에 별점(⭐1~5)을 매겨 봅니다.',     highlight: 'timeline', studentLabel: '나의 여정 돌아보기 · 별점 주기' },
-    { id: 'canvanews', session: '19차시',      label: '2단계 — 캔바 카드뉴스 제작 및 제출',          hint: '별점 준 활동을 중심으로 Canva에서 카드뉴스를 만들고 URL을 제출합니다.',             highlight: 'canva',    studentLabel: '캔바 카드뉴스 제작' },
-    { id: 'reflect',   session: '19차시',      label: '3단계 — 구조적 정리글 작성',                  hint: '카드뉴스를 참고하여 개요(3단락)+중심/뒷받침문장+사실·의견 구조로 정리글을 씁니다.', highlight: 'editor',   studentLabel: '정리글 작성' },
-    { id: 'approve',   session: '19~20차시',   label: '4단계 — 정리글 승인 큐 처리 (빠른제어)',       hint: '빠른 제어 패널에서 학생 정리글을 확인하고 승인/반려합니다.',                         highlight: 'approve',  studentLabel: '선생님께서 검토 중이에요...' },
-    { id: 'gallery',   session: '20차시',      label: '5단계 — 갤러리 워크: 친구들 공감·댓글',        hint: '승인된 친구들의 정리글과 카드뉴스를 읽고 이모지 공감과 댓글을 남깁니다.',            highlight: 'gallery',  studentLabel: '친구들 정리글 감상 · 공감 · 댓글' },
-    { id: 'closing',   session: '20차시',      label: '6단계 — 학급 여정 피날레 + 마무리',            hint: '우리 반 별점 하이라이트 타임라인과 마무리 메시지로 프로젝트를 마칩니다.',             highlight: 'finale',   studentLabel: '우리 반의 여정 마무리 🎉' },
+    { id: 'timeline',  session: '19차시',      label: '나의 여정 타임라인 + 별점 자율평가',   hint: '1·2·3 여정에서 본인이 한 활동을 돌아보며 각 활동에 별점(⭐1~5)을 매겨 봅니다.',     highlight: 'timeline', studentLabel: '나의 여정 돌아보기 · 별점 주기' },
+    { id: 'canvanews', session: '19차시',      label: '캔바 카드뉴스 제작 및 제출',          hint: '별점 준 활동을 중심으로 Canva에서 카드뉴스를 만들고 URL을 제출합니다.',             highlight: 'canva',    studentLabel: '캔바 카드뉴스 제작' },
+    { id: 'reflect',   session: '19차시',      label: '구조적 정리글 작성',                  hint: '카드뉴스를 참고하여 개요(3단락)+중심/뒷받침문장+사실·의견 구조로 정리글을 씁니다.', highlight: 'editor',   studentLabel: '정리글 작성' },
+    { id: 'approve',   session: '19~20차시',   label: '정리글 승인 큐 처리 (빠른제어)',       hint: '빠른 제어 패널에서 학생 정리글을 확인하고 승인/반려합니다.',                         highlight: 'approve',  studentLabel: '선생님께서 검토 중이에요...' },
+    { id: 'gallery',   session: '20차시',      label: '갤러리 워크: 친구들 공감·댓글',        hint: '승인된 친구들의 정리글과 카드뉴스를 읽고 이모지 공감과 댓글을 남깁니다.',            highlight: 'gallery',  studentLabel: '친구들 정리글 감상 · 공감 · 댓글' },
+    { id: 'closing',   session: '20차시',      label: '학급 여정 피날레 + 마무리',            hint: '우리 반 별점 하이라이트 타임라인과 마무리 메시지로 프로젝트를 마칩니다.',             highlight: 'finale',   studentLabel: '우리 반의 여정 마무리 🎉' },
   ],
 }
 

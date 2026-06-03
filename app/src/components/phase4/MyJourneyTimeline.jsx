@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe, updateAt, getOnce } from '../../lib/rtdb-helpers'
 
 /**
  * 1단계: 민국에서 나의 발자취 돌아보기
+ * - 학생이 수행하여 '학생 분석'에 수집되는 활동들을 1->2->3여정 단계 순서대로 노드로 시각화
  * - 꼬불꼬불(snake) 경로 위에 활동 노드 배치
- * - 노드 클릭 → 카드 모달(내용 + 별점 + 이전/다음)
+ * - 노드 클릭 → 카드 모달(활동 전체 펼침 + 우측 상단 별점 + 이전/다음 네비게이션)
  */
 
 const PHASE_META = {
@@ -21,7 +22,7 @@ function Stars({ value = 0, onChange, size = 'md' }) {
   const [hover, setHover] = useState(0)
   const sz = size === 'lg' ? 'text-3xl' : 'text-xl'
   return (
-    <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
+    <div className="flex gap-0.5" onMouseLeave={() => setHover(0)}>
       {[1,2,3,4,5].map((n) => (
         <button key={n} type="button"
           onClick={() => onChange(n === value ? 0 : n)}
@@ -41,7 +42,6 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
   const act = activities[index]
   if (!act) return null
   const meta = PHASE_META[act.phase]
-  const [open, setOpen] = useState(false)
 
   // 키보드 ESC
   useEffect(() => {
@@ -51,72 +51,80 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="relative z-10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
-        style={{ background: meta.bg, border: `2px solid ${meta.border}` }}
+        className="relative z-10 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        style={{ background: meta.bg, border: `3px solid ${meta.border}` }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 상단 */}
-        <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-3">
+        {/* 상단 헤더 & 별점 영역 */}
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100/50 flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl">{meta.emoji}</span>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: meta.color + '22', color: meta.color }}>
-                {meta.label} · {act.meta.replace(/ · \d여정/, '')}
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-2xl">{act.icon || meta.emoji}</span>
+              <span className="text-[11px] font-black px-2 py-0.5 rounded-full"
+                style={{ background: meta.color + '15', color: meta.color }}>
+                {meta.label} · {meta.sub}
               </span>
             </div>
-            <h3 className="font-black text-base leading-snug" style={{ color: meta.text }}>
+            <h3 className="font-black text-base md:text-lg leading-snug" style={{ color: meta.text }}>
               {act.title}
             </h3>
           </div>
-          <button onClick={onClose}
-            className="shrink-0 w-8 h-8 rounded-full bg-white/60 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 font-bold text-lg transition">
-            ✕
-          </button>
-        </div>
-
-        {/* 내용 */}
-        {act.content && (
-          <div className="mx-5 mb-4">
-            <button onClick={() => setOpen((v) => !v)}
-              className="text-xs font-semibold underline underline-offset-2 mb-1"
-              style={{ color: meta.color }}>
-              {open ? '▲ 내용 접기' : '▼ 활동 내용 보기'}
-            </button>
-            {open && (
-              <div className="rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap"
-                style={{ background: 'rgba(255,255,255,0.7)' }}>
-                {act.content}
+          
+          {/* 우측 상단 별점 + 닫기 영역 */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              {/* 별점 컴포넌트 */}
+              <div className="bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-2xl border border-gray-200/50 shadow-sm flex flex-col items-center gap-0.5">
+                <span className="text-[9px] font-bold text-gray-500 leading-none">별점 평가</span>
+                <Stars value={ratings[act.key] || 0} onChange={(v) => onRate(act.key, v)} size="md" />
               </div>
+              
+              {/* 닫기 버튼 */}
+              <button onClick={onClose}
+                className="w-8 h-8 rounded-full bg-white/60 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 font-bold text-sm shadow-sm transition active:scale-95">
+                ✕
+              </button>
+            </div>
+            {ratings[act.key] > 0 && (
+              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50">
+                평가함: ⭐{ratings[act.key]}점
+              </span>
             )}
           </div>
-        )}
+        </div>
 
-        {/* 별점 */}
-        <div className="mx-5 mb-5 p-4 rounded-2xl flex flex-col items-center gap-2"
-          style={{ background: 'rgba(255,255,255,0.6)' }}>
-          <p className="text-sm font-bold text-gray-700">이 활동에 별점을 주세요</p>
-          <Stars value={ratings[act.key] || 0} onChange={(v) => onRate(act.key, v)} size="lg" />
-          {ratings[act.key] > 0 && (
-            <p className="text-xs text-gray-500">{'★'.repeat(ratings[act.key])} {ratings[act.key]}점</p>
+        {/* 중앙 본문 (전체 펼침 상태) */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {act.content ? (
+            <div className="rounded-2xl p-5 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-gray-100 max-h-[40vh] overflow-y-auto"
+              style={{ background: 'rgba(255,255,255,0.75)' }}>
+              {act.content}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-400 text-xs">
+              상세 활동 내용이 없습니다.
+            </div>
           )}
         </div>
 
-        {/* 이전 / 다음 네비게이션 */}
-        <div className="flex items-center justify-between px-4 pb-4 gap-2">
+        {/* 하단 네비게이션 */}
+        <div className="px-6 pb-6 pt-3 flex items-center justify-between gap-4 border-t border-gray-100/50 bg-white/30">
           <button onClick={onPrev} disabled={index === 0}
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-30"
-            style={{ background: meta.color + '22', color: meta.color }}>
-            ← 이전
+            className="flex-1 flex items-center justify-center gap-1 py-3 rounded-2xl text-xs font-black transition disabled:opacity-30 disabled:pointer-events-none hover:brightness-95 active:scale-[0.98]"
+            style={{ background: meta.color + '15', color: meta.color }}>
+            ← 이전 활동
           </button>
-          <span className="text-xs text-gray-400 shrink-0">{index + 1} / {activities.length}</span>
+          
+          <span className="text-xs font-bold text-gray-500 shrink-0 bg-white/60 px-3 py-1.5 rounded-full border">
+            {index + 1} / {activities.length}
+          </span>
+          
           <button onClick={onNext} disabled={index === activities.length - 1}
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-30"
-            style={{ background: meta.color + '22', color: meta.color }}>
-            다음 →
+            className="flex-1 flex items-center justify-center gap-1 py-3 rounded-2xl text-xs font-black transition disabled:opacity-30 disabled:pointer-events-none hover:brightness-95 active:scale-[0.98]"
+            style={{ background: meta.color + '15', color: meta.color }}>
+            다음 활동 →
           </button>
         </div>
       </div>
@@ -126,7 +134,6 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
 
 // ── Snake 경로 커넥터 (행 사이 U/N 곡선)
 function SnakeConnector({ direction }) {
-  // direction: 'right' → 오른쪽 끝에서 아래로 꺾임, 'left' → 왼쪽 끝에서 아래로 꺾임
   return (
     <div className="flex items-stretch my-0" style={{ height: 48 }}>
       {direction === 'right' ? (
@@ -184,7 +191,7 @@ function Node({ act, index, ratings, isActive, onClick }) {
       </button>
 
       {/* 짧은 제목 */}
-      <span className="text-[10px] text-center text-gray-600 font-medium leading-tight max-w-[64px] line-clamp-2">
+      <span className="text-[10px] text-center text-gray-600 font-bold leading-tight max-w-[64px] line-clamp-2">
         {act.shortTitle}
       </span>
     </div>
@@ -214,13 +221,19 @@ export default function MyJourneyTimeline() {
     return null
   }, [groups, myStudentId])
 
-  const [essays,     setEssays]     = useState({})
-  const [posters,    setPosters]    = useState({})
-  const [candidates, setCandidates] = useState({})
-  const [supports,   setSupports]   = useState({})
-  const [articles,   setArticles]   = useState({})
-  const [branchData, setBranchData] = useState({})
-  const [ratings,    setRatings]    = useState({})
+  const [essays,        setEssays]        = useState({})
+  const [posters,       setPosters]       = useState({})
+  const [candidates,    setCandidates]    = useState({})
+  const [supports,      setSupports]      = useState({})
+  const [articles,      setArticles]      = useState({})
+  const [branchData,    setBranchData]    = useState({})
+  const [links,         setLinks]         = useState({})
+  const [polls,         setPolls]         = useState({})
+  const [pollReasons,   setPollReasons]   = useState({})
+  const [electionVotes, setElectionVotes] = useState({})
+  const [billVotes,     setBillVotes]     = useState({})
+  const [juryVotes,     setJuryVotes]     = useState({})
+  const [ratings,       setRatings]       = useState({})
   const [savingKey,  setSavingKey]  = useState(null)
   const [activeIdx,  setActiveIdx]  = useState(null)
 
@@ -233,6 +246,12 @@ export default function MyJourneyTimeline() {
       subscribe(roomCode, 'supportStatements', (d) => setSupports(d || {})),
       subscribe(roomCode, 'articles',          (d) => setArticles(d || {})),
       subscribe(roomCode, 'branchUnits',       (d) => setBranchData(d || {})),
+      subscribe(roomCode, 'links',             (d) => setLinks(d || {})),
+      subscribe(roomCode, 'polls',             (d) => setPolls(d || {})),
+      subscribe(roomCode, 'polls/reasons',     (d) => setPollReasons(d || {})),
+      subscribe(roomCode, 'electionVotes',     (d) => setElectionVotes(d || {})),
+      subscribe(roomCode, 'billVotes',         (d) => setBillVotes(d || {})),
+      subscribe(roomCode, 'juryVotes',         (d) => setJuryVotes(d || {})),
     ]
     return () => subs.forEach((u) => u?.())
   }, [roomCode])
@@ -256,99 +275,227 @@ export default function MyJourneyTimeline() {
   const activities = useMemo(() => {
     const acts = []
 
-    // ── 1여정
+    // ── 1여정 (첫 번째 여정 - 시민 광장) ──
+    
+    // 1-1. 슬로건
+    Object.entries(groups || {}).forEach(([gid, g]) => {
+      const ss = g?.slogans || {}
+      Object.entries(ss).forEach(([sid, s]) => {
+        if (s?.authorStudentId === myStudentId) {
+          acts.push({
+            key: `phase1_slogan_${gid}_${sid}`,
+            phase: 1,
+            icon: '💬',
+            shortTitle: '슬로건',
+            title: `시민광장 슬로건`,
+            meta: '💬 슬로건 · 1여정',
+            content: `내가 제출한 슬로건:\n"${s.text}"`
+          })
+        }
+      })
+    })
+
+    // 1-2. 주장하는 글 (에세이)
     Object.entries(essays).forEach(([id, e]) => {
       if (e.authorStudentId !== myStudentId) return
       acts.push({
         key: `phase1_essay_${id}`, phase: 1,
-        icon: '📝', shortTitle: e.title ? e.title.slice(0, 8) : '주장글',
-        title: e.title || '주장하는 글', meta: '📝 주장하는 글 · 1여정',
-        content: [e.claim, e.evidence, e.impact].filter(Boolean).join('\n\n'),
-      })
-    })
-    Object.entries(posters).forEach(([id, p]) => {
-      if (!myGroupId || p.groupId !== myGroupId) return
-      if (p.authorStudentId && p.authorStudentId !== myStudentId) return
-      acts.push({
-        key: `phase1_poster_${id}`, phase: 1,
-        icon: '🖼️', shortTitle: p.title ? p.title.slice(0, 8) : '포스터',
-        title: p.title || p.caption || '포스터', meta: '🖼️ 포스터 · 1여정',
-        content: p.caption || p.description || '',
+        icon: '📝', shortTitle: '주장글',
+        title: e.title || '주장하는 글', meta: '📝 주장글 · 1여정',
+        content: [
+          e.claim ? `[주장] ${e.claim}` : '',
+          e.evidence ? `[근거] ${e.evidence}` : '',
+          e.impact ? `[해결 방안 및 기대 효과] ${e.impact}` : ''
+        ].filter(Boolean).join('\n\n'),
       })
     })
 
-    // ── 2여정
+    // 1-3. 포스터
+    Object.entries(posters).forEach(([id, p]) => {
+      if (p.authorStudentId !== myStudentId && (!myGroupId || p.groupId !== myGroupId)) return
+      const isMyUpload = p.authorStudentId === myStudentId
+      acts.push({
+        key: `phase1_poster_${id}`, phase: 1,
+        icon: '🖼️', shortTitle: isMyUpload ? '내포스터' : '모둠포스터',
+        title: p.title || p.caption || (isMyUpload ? '내가 올린 포스터' : '우리 모둠 포스터'), 
+        meta: isMyUpload ? '🖼️ 내 포스터 · 1여정' : '🖼️ 모둠 포스터 · 1여정',
+        content: p.caption || p.description || '(포스터 설명 없음)',
+      })
+    })
+
+    // 1-4. 시민광장 설문조사 투표 및 사유
+    Object.entries(polls).forEach(([pid, p]) => {
+      const isPhase1 = pid.startsWith('phase1') || (typeof p?.tag === 'string' && p.tag.includes('시민'))
+      if (!isPhase1) return
+      const v = p?.votes?.[myStudentId]
+      if (!v) return
+
+      const optIdx = parseInt(v.optionId?.replace('opt_', '') || '', 10)
+      const opt = p.options?.[optIdx] || p.options?.[v.optionId]
+      const label = typeof opt === 'string' ? opt : (opt?.label || opt?.id || v.optionId)
+      const reason = pollReasons[pid]?.[myStudentId] || ''
+
+      acts.push({
+        key: `phase1_poll_${pid}`, phase: 1,
+        icon: '📊', shortTitle: '설문투표',
+        title: p.question || '시민광장 설문조사', meta: '📊 설문조사 · 1여정',
+        content: `내가 선택한 항목: ${label}\n\n${reason ? `[선택 이유]\n${reason}` : ''}`,
+      })
+    })
+
+    // ── 2여정 (두 번째 여정 - 선거) ──
+
+    // 2-1. 후보 등록
     if (myGroupId && candidates[myGroupId]) {
       const c = candidates[myGroupId]
       acts.push({
         key: 'phase2_candidate', phase: 2,
         icon: '🗳️', shortTitle: '후보등록',
         title: c.candidateName ? `후보: ${c.candidateName}` : '후보 등록', meta: '🗳️ 후보 등록 · 2여정',
-        content: c.pledge || c.manifesto || '',
+        content: `[대표 공약]\n${c.pledge || c.manifesto || ''}`,
       })
     }
+
+    // 2-2. 지지 선언문
     Object.entries(supports).forEach(([id, s]) => {
       if (s.authorStudentId !== myStudentId) return
       acts.push({
         key: `phase2_support_${id}`, phase: 2,
         icon: '📣', shortTitle: '지지선언',
-        title: '지지 선언문', meta: '📣 지지 선언문 · 2여정',
+        title: '대통령 후보 지지 선언문', meta: '📣 지지선언 · 2여정',
         content: s.content || s.statement || '',
       })
     })
+
+    // 2-3. 선거 기사
     Object.entries(articles).forEach(([id, a]) => {
       if (a.authorStudentId !== myStudentId || a.phase !== 2) return
       acts.push({
         key: `phase2_article_${id}`, phase: 2,
-        icon: '📰', shortTitle: a.title ? a.title.slice(0, 8) : '선거기사',
-        title: a.title || '선거 기사', meta: '📰 기사 · 2여정',
-        content: a.body || a.content || '',
+        icon: '📰', shortTitle: '선거기사',
+        title: a.title || '선거 기사', meta: '📰 선거 기사 · 2여정',
+        content: a.headline ? `[헤드라인] ${a.headline}\n\n${a.body}` : a.body || a.content || '',
       })
     })
 
-    // ── 3여정
-    Object.entries(branchData).forEach(([unitId, unit]) => {
-      if (!unit || unit.groupId !== myGroupId) return
-      if (unit.type === 'legislative') {
-        const bills = Object.values(unit.bills || {})
-        bills.forEach((bill, i) => {
-          acts.push({
-            key: `phase3_bill_${unitId}_${i}`, phase: 3,
-            icon: '🏛️', shortTitle: bill.title ? bill.title.slice(0, 6) : '법안',
-            title: bill.title || '입법 법안', meta: '🏛️ 입법 · 3여정',
-            content: bill.content || bill.body || '',
-          })
-        })
-      }
-      if (unit.type === 'executive') {
-        acts.push({
-          key: `phase3_executive_${unitId}`, phase: 3,
-          icon: '🏢', shortTitle: unit.ministryName ? unit.ministryName.slice(0, 6) : '행정정책',
-          title: unit.ministryName || '행정 정책', meta: '🏢 행정 · 3여정',
-          content: unit.policyDraft || unit.finalPolicy || '',
-        })
-      }
-      if (unit.type === 'judicial') {
-        acts.push({
-          key: `phase3_judicial_${unitId}`, phase: 3,
-          icon: '⚖️', shortTitle: unit.role || '사법',
-          title: unit.role ? `사법 — ${unit.role}` : '사법 활동', meta: '⚖️ 사법 · 3여정',
-          content: unit.submission || unit.verdict || '',
-        })
-      }
+    // 2-4. 대통령 선거 투표 참여
+    if (electionVotes[myStudentId]) {
+      acts.push({
+        key: 'phase2_election', phase: 2,
+        icon: '🗳️', shortTitle: '대선투표',
+        title: '대통령 선거 투표 참여', meta: '🗳️ 투표 완료 · 2여정',
+        content: '대한민국 제1대 대통령 선거 투표에 참여하였습니다.',
+      })
+    }
+
+    // 2-5. 공유 뉴스 기사 (type: news인 외부 링크)
+    Object.entries(links).forEach(([id, l]) => {
+      if (l.submitterStudentId !== myStudentId || l.type !== 'news') return
+      acts.push({
+        key: `phase2_news_${id}`, phase: 2,
+        icon: '🔗', shortTitle: '뉴스공유',
+        title: l.title || '공유한 뉴스기사', meta: '🔗 뉴스 기사 공유 · 2여정',
+        content: `[헤드라인] ${l.title || ''}\n${l.summary ? `\n[요약]\n${l.summary}` : ''}\n\n[출처] ${l.source || ''}\n[링크] ${l.url}`,
+      })
     })
+
+    // ── 3여정 (세 번째 여정 - 국정 포털) ──
+
+    // 3-1. 입법 법안
+    Object.entries(branchData).forEach(([unitId, unit]) => {
+      if (!unit || unit.groupId !== myGroupId || unit.type !== 'legislative') return
+      const bills = Object.values(unit.bills || {})
+      bills.forEach((bill, i) => {
+        acts.push({
+          key: `phase3_bill_${unitId}_${i}`, phase: 3,
+          icon: '🏛️', shortTitle: '제안법안',
+          title: bill.title || '입법부 제안 법안', meta: '🏛️ 입법 제안 · 3여정',
+          content: bill.content || bill.body || '',
+        })
+      })
+    })
+
+    // 3-2. 행정 정책
+    Object.entries(branchData).forEach(([unitId, unit]) => {
+      if (!unit || unit.groupId !== myGroupId || unit.type !== 'executive') return
+      acts.push({
+        key: `phase3_executive_${unitId}`, phase: 3,
+        icon: '🏢', shortTitle: '행정정책',
+        title: unit.ministryName || '행정부 정책 수립', meta: '🏢 행정 정책 · 3여정',
+        content: `[수립 정책]\n${unit.policyDraft || unit.finalPolicy || ''}`,
+      })
+    })
+
+    // 3-3. 사법 활동
+    Object.entries(branchData).forEach(([unitId, unit]) => {
+      if (!unit || unit.groupId !== myGroupId || unit.type !== 'judicial') return
+      acts.push({
+        key: `phase3_judicial_${unitId}`, phase: 3,
+        icon: '⚖️', shortTitle: '사법활동',
+        title: unit.role ? `사법부 활동 (${unit.role})` : '사법부 재판/활동', meta: '⚖️ 사법 활동 · 3여정',
+        content: unit.submission || unit.verdict || '',
+      })
+    })
+
+    // 3-4. 국정 기사
     Object.entries(articles).forEach(([id, a]) => {
       if (a.authorStudentId !== myStudentId || a.phase !== 3) return
       acts.push({
         key: `phase3_article_${id}`, phase: 3,
-        icon: '📰', shortTitle: a.title ? a.title.slice(0, 8) : '국정기사',
-        title: a.title || '국정 기사', meta: '📰 기사 · 3여정',
-        content: a.body || a.content || '',
+        icon: '📰', shortTitle: '국정기사',
+        title: a.title || '국정 기사', meta: '📰 국정 기사 · 3여정',
+        content: a.headline ? `[헤드라인] ${a.headline}\n\n${a.body}` : a.body || a.content || '',
+      })
+    })
+
+    // 3-5. 법안 투표 참여
+    Object.entries(billVotes).forEach(([bid, votes]) => {
+      if (votes && votes[myStudentId]) {
+        const myChoice = votes[myStudentId]
+        const choiceText = myChoice === 'pro' ? '찬성' : myChoice === 'con' ? '반대' : '기권'
+        let billTitle = bid
+        for (const unit of Object.values(branchData)) {
+          if (unit.type === 'legislative' && unit.bills) {
+            const matched = Object.values(unit.bills).find(b => b.title && b.title.includes(bid) || b.content && b.content.includes(bid))
+            if (matched) { billTitle = matched.title; break }
+          }
+        }
+        acts.push({
+          key: `phase3_billvote_${bid}`, phase: 3,
+          icon: '🏛️', shortTitle: '법안투표',
+          title: `법안 표결 참여: ${billTitle}`, meta: '🏛️ 법안 표결 · 3여정',
+          content: `해당 법안에 대해 [ ${choiceText} ] 투표를 행사했습니다.`,
+        })
+      }
+    })
+
+    // 3-6. 배심원 재판 투표 참여
+    Object.entries(juryVotes).forEach(([cid, votes]) => {
+      if (votes && votes[myStudentId]) {
+        const myChoice = votes[myStudentId]
+        const choiceText = myChoice === 'pro' ? '찬성/유죄' : '반대/무죄'
+        acts.push({
+          key: `phase3_juryvote_${cid}`, phase: 3,
+          icon: '⚖️', shortTitle: '재판투표',
+          title: `배심원 재판 표결 참여: ${cid}`, meta: '⚖️ 배심원 투표 · 3여정',
+          content: `피고인에 대해 평결 [ ${choiceText} ] 투표를 행사했습니다.`,
+        })
+      }
+    })
+
+    // 3-7. 공유 영상/캔바 링크 (type이 news가 아닌 외부 링크)
+    Object.entries(links).forEach(([id, l]) => {
+      if (l.submitterStudentId !== myStudentId || l.type === 'news') return
+      acts.push({
+        key: `phase3_video_${id}`, phase: 3,
+        icon: '🎬', shortTitle: '영상공유',
+        title: l.title || '공유한 영상/캔바', meta: '🎬 영상/캔바 공유 · 3여정',
+        content: `[제목] ${l.title || ''}\n\n[URL] ${l.url}`,
       })
     })
 
     return acts
-  }, [essays, posters, candidates, supports, articles, branchData, myStudentId, myGroupId])
+  }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, myStudentId, myGroupId, groups])
 
   // Snake 행으로 분할
   const rows = useMemo(() => {
@@ -416,7 +563,6 @@ export default function MyJourneyTimeline() {
               <div key={rowIdx}>
                 {/* 여정 구분선 라벨 */}
                 {(() => {
-                  // 이 행에 새로운 여정이 시작되는지 확인
                   const labels = []
                   const seen = new Set()
                   row.forEach((act, i) => {
@@ -426,7 +572,7 @@ export default function MyJourneyTimeline() {
                       seen.add(act.phase)
                       const m = PHASE_META[act.phase]
                       labels.push(
-                        <div key={act.phase} className="flex items-center gap-1.5 mb-2">
+                        <div key={act.phase} className="flex items-center gap-1.5 mb-2 mt-2">
                           <span className="text-base">{m.emoji}</span>
                           <span className="text-xs font-black" style={{ color: m.text }}>{m.label} — {m.sub}</span>
                           <div className="flex-1 h-px" style={{ background: m.border }} />
@@ -508,3 +654,4 @@ export default function MyJourneyTimeline() {
     </div>
   )
 }
+

@@ -505,6 +505,58 @@ function ArticleRefPanel() {
   )
 }
 
+/** 상정 법안 요약 배너 — 토론 전 카드 위에 표시 */
+function buildBillText(bill) {
+  const td = bill?.templateData || {}
+  if (bill?.body) return bill.body
+  const lines = []
+  if (td.purpose) lines.push(`제1조 (목적) ${td.purpose}`)
+  if (td.definition) lines.push(`제2조 (정의) ${td.definition}`)
+  if (td.duty) lines.push(`제3조 (의무) ${td.duty}`)
+  if (td.penalty) lines.push(`제4조 (벌칙) ${td.penalty}`)
+  if (lines.length) return lines.join('\n\n')
+  for (const [k, l] of [['background','입법 배경'],['clause','핵심 조항'],['effect','예상 효과'],['rebuttal','우려 대응']]) {
+    if (td[k]) lines.push(`[${l}]\n${td[k]}`)
+  }
+  return lines.join('\n\n')
+}
+
+function BillBanner({ bill }) {
+  const [open, setOpen] = useState(false)
+  const td = bill?.templateData || {}
+  const background = td.background || td.proposalReason || td.reason || ''
+  const bodyText = buildBillText(bill)
+  return (
+    <div className="border border-indigo-200 rounded-xl overflow-hidden text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left"
+      >
+        <span className="text-sm">🏛️</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-indigo-800 truncate">상정 법안 · {bill.title}</p>
+          <p className="text-indigo-400 text-[10px]">눌러서 법안 전문 보기</p>
+        </div>
+        <span className="shrink-0 text-indigo-400 font-bold">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="bg-white px-3 py-3 space-y-2.5">
+          {background && (
+            <>
+              <div className="bg-sky-50 rounded-lg px-3 py-2 text-[11px] text-sky-900 leading-relaxed">
+                <span className="font-black text-sky-700 mr-1.5">📌 제안 이유</span>{background.trim()}
+              </div>
+              <hr className="border-slate-100" />
+            </>
+          )}
+          <p className="text-[11px] text-gray-700 whitespace-pre-wrap leading-relaxed">{bodyText}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DebateToolPanel() {
   const role = useGameStore((s) => s.role)
   const roomCode = useGameStore((s) => s.roomCode)
@@ -528,6 +580,7 @@ function DebateToolPanel() {
   const detach = useDebateStore((s) => s.detach)
 
   const [tab, setTab] = useState('pre')
+  const [relatedBill, setRelatedBill] = useState(null) // 상정 법안 정보
   // dismiss 상태: '<sessionId>:<toolKey>' 단위로 학생이 닫은 흔적 보관
   const [dismissedKey, setDismissedKey] = useState(null)
   // 평가단 전용 — 선택된 평가 단계 (타이머 자동진행 무관)
@@ -543,6 +596,16 @@ const lastSessionIdRef = useRef(null)
     if (roomCode) attachListener(roomCode, myStudentId)
     return () => detach()
   }, [roomCode, myStudentId, attachListener, detach])
+
+  // 상정 법안 구독 — session.relatedBillId 기준
+  useEffect(() => {
+    const billId = session?.relatedBillId
+    if (!roomCode || !billId) { setRelatedBill(null); return }
+    const unsub = subscribe(roomCode, `bills/${billId}`, (d) =>
+      setRelatedBill(d ? { id: billId, ...d } : null)
+    )
+    return unsub
+  }, [roomCode, session?.relatedBillId])
 
   // 활성 도구 시그니처 — pre 폴 isOpen 변화나 prepCard 활성화도 감지
   const activeTools = Array.isArray(session?.activeTools) ? session.activeTools : []
@@ -848,26 +911,37 @@ const lastSessionIdRef = useRef(null)
 
             {/* 탭 */}
             <div className="flex bg-slate-50 border-b border-slate-200">
-              {[
-                ['pre',  '토론 전', showPrePoll || (showPrepCard && canSeePrep) || showScript],
-                ['mid',  '토론 중', showTimer],
-                ['post', '토론 후', showPostPoll || speechEvals.filter((e) => !e.isOpen).length > 0],
-              ].map(([id, label, on]) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={`flex-1 py-3 text-xs font-black transition-all relative ${
-                    tab === id
-                      ? 'bg-white text-indigo-700 border-b-4 border-indigo-600'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  {label}
-                  {on && (
-                    <span className="absolute top-2 right-4 w-2 h-2 bg-rose-500 rounded-full animate-pulse shadow-sm shadow-rose-200" />
-                  )}
-                </button>
-              ))}
+              {(() => {
+                const teacherTab = session?.teacherTab
+                const midUnlocked = timerRunning || teacherTab === 'mid' || teacherTab === 'post'
+                const postUnlocked = showPostPoll || teacherTab === 'post' ||
+                  speechEvals.filter((e) => !e.isOpen).length > 0
+                return [
+                  ['pre',  '토론 전',  true,         showPrePoll || (showPrepCard && canSeePrep) || showScript],
+                  ['mid',  '토론 중',  midUnlocked,  showTimer],
+                  ['post', '토론 후',  postUnlocked, showPostPoll || speechEvals.filter((e) => !e.isOpen).length > 0],
+                ].map(([id, label, unlocked, on]) => (
+                  <button
+                    key={id}
+                    onClick={() => unlocked && setTab(id)}
+                    disabled={!unlocked}
+                    title={!unlocked ? '교사가 아직 이 단계를 열지 않았습니다.' : undefined}
+                    className={`flex-1 py-3 text-xs font-black transition-all relative ${
+                      !unlocked
+                        ? 'text-slate-300 cursor-not-allowed'
+                        : tab === id
+                          ? 'bg-white text-indigo-700 border-b-4 border-indigo-600'
+                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {label}
+                    {!unlocked && <span className="ml-1 text-[9px]">🔒</span>}
+                    {unlocked && on && (
+                      <span className="absolute top-2 right-4 w-2 h-2 bg-rose-500 rounded-full animate-pulse shadow-sm shadow-rose-200" />
+                    )}
+                  </button>
+                ))
+              })()}
             </div>
 
             {/* 본문 */}
@@ -888,7 +962,10 @@ const lastSessionIdRef = useRef(null)
                     </div>
                   )}
                   {showPrepCard && canSeePrep && (
-                    <DebatePrepCard session={session} prepCards={prepCards} isPublic={isPublic} />
+                    <>
+                      {relatedBill && <BillBanner bill={relatedBill} />}
+                      <DebatePrepCard session={session} prepCards={prepCards} isPublic={isPublic} />
+                    </>
                   )}
                   {showScript && (
                     <DebateScriptEditor 

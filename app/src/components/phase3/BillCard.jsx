@@ -64,6 +64,7 @@ function BillCard({ bill, commentsMap, rank, previewMode = false }) {
   const [editTitle, setEditTitle] = useState(bill.title || '')
   const [editBody, setEditBody] = useState(buildBillBodyText(bill))
   const [editingBusy, setEditingBusy] = useState(false)
+  const [researchPlan, setResearchPlan] = useState({}) // 발의 모둠 연구자료
 
   const status = normalizeBillStatus(bill.status)
 
@@ -73,6 +74,18 @@ function BillCard({ bill, commentsMap, rank, previewMode = false }) {
     const u2 = subscribe(roomCode, `bills/${bill.id}/finalVotes`, (d) => setFinalVotes(d || {}))
     return () => { u1?.(); u2?.() }
   }, [roomCode, bill?.id])
+
+  // 발의 모둠의 연구자료(뉴스 링크 등) 구독 — 토의·상정 단계에서 활용
+  useEffect(() => {
+    if (!roomCode || !bill?.proposerGroupId) return
+    if (status !== 'discussion' && status !== 'tabled') return
+    const unsub = subscribe(
+      roomCode,
+      `researchPlans/phase3_legislative/${bill.proposerGroupId}`,
+      (d) => setResearchPlan(d || {}),
+    )
+    return unsub
+  }, [roomCode, bill?.proposerGroupId, status])
 
   const proposer = bill.proposerGroupId ? groups[bill.proposerGroupId] : null
   const badge = STATUS_BADGE[status] || STATUS_BADGE.discussion
@@ -382,7 +395,56 @@ function BillCard({ bill, commentsMap, rank, previewMode = false }) {
           </div>
         </div>
       ) : (
-        <p className="text-sm text-gray-700 whitespace-pre-wrap">{billBody}</p>
+        <>
+          {/* 제안 이유·배경 — 법안 본문 위, 구분선 포함 */}
+          {status === 'discussion' && (() => {
+            const td = bill.templateData || {}
+            // background(역할중심), rebuttal 포함 구버전, proposalReason 등 여러 키 시도
+            const background = td.background || td.proposalReason || td.reason || ''
+            if (!background.trim()) return null
+            return (
+              <>
+                <div className="bg-sky-50 rounded-lg px-3 py-2 text-xs text-sky-900 leading-relaxed">
+                  <span className="font-black text-sky-700 mr-1.5">📌 제안 이유</span>
+                  {background.trim()}
+                </div>
+                <hr className="border-slate-200" />
+              </>
+            )
+          })()}
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{billBody}</p>
+          {/* 관련 자료 링크 — 법안 본문 아래, 구분선 포함 */}
+          {status === 'discussion' && (() => {
+            const researchItems = Object.values(researchPlan.items || researchPlan.refs || researchPlan || {})
+              .filter((item) => item && typeof item === 'object' && (item.title || item.url))
+            if (!researchItems.length) return null
+            return (
+              <>
+                <hr className="border-slate-200" />
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[11px] font-black text-slate-400 self-center">🔗 관련 자료</span>
+                  {researchItems.map((item, i) => (
+                    item.url ? (
+                      <a key={i} href={item.url} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-sky-700 hover:bg-sky-100 border border-slate-200 font-medium max-w-[200px] truncate"
+                        title={item.title || item.url}
+                      >
+                        {item.title || item.url}
+                      </a>
+                    ) : (
+                      <span key={i}
+                        className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium max-w-[200px] truncate"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </span>
+                    )
+                  ))}
+                </div>
+              </>
+            )
+          })()}
+        </>
       )}
 
       {/* === 토의 단계 (discussion) === */}
@@ -553,47 +615,69 @@ function BillCard({ bill, commentsMap, rank, previewMode = false }) {
       {/* === 정식 상정 (tabled) — 발표 후에도 전광판 켜져 있는 동안 유지 === */}
       {(status === 'tabled' || (bill.voteResult && billBoardActive)) && (
         <>
-          {/* 학생 표결 — 전광판 켜졌을 때만 활성, previewMode 시 숨김 */}
-          {role === 'student' && !previewMode && (
-            billBoardActive ? (
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t">
-                <button
-                  onClick={() => castFinalVote('pro')}
-                  className={`py-2.5 text-sm rounded-lg font-bold ${
-                    myFinalChoice === 'pro'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  }`}
-                >
-                  ✅ 찬성
-                </button>
-                <button
-                  onClick={() => castFinalVote('con')}
-                  className={`py-2.5 text-sm rounded-lg font-bold ${
-                    myFinalChoice === 'con'
-                      ? 'bg-rose-600 text-white shadow'
-                      : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
-                  }`}
-                >
-                  ❌ 반대
-                </button>
-                <button
-                  onClick={() => castFinalVote('abstain')}
-                  className={`py-2.5 text-sm rounded-lg font-bold ${
-                    myFinalChoice === 'abstain'
-                      ? 'bg-gray-500 text-white shadow'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  ⚪ 기권
-                </button>
-              </div>
-            ) : (
-              <div className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-3 text-center text-sm text-amber-900 font-semibold">
-                🎬 선생님이 전광판을 띄우면 표결할 수 있어요
+          {/* 학생용: 제안이유 → 관련자료 → 구분선 → 전광판 안내 */}
+          {role === 'student' && !previewMode && (() => {
+            const td = bill.templateData || {}
+            const background = td.background || td.proposalReason || td.reason || ''
+            const researchItems = Object.values(researchPlan.items || researchPlan.refs || researchPlan || {})
+              .filter((item) => item && typeof item === 'object' && (item.title || item.url))
+            return (
+              <div className="space-y-2">
+                {/* 제안 이유 */}
+                {background && (
+                  <div className="bg-sky-50 rounded-lg px-3 py-2 text-xs text-sky-900 leading-relaxed">
+                    <span className="font-black text-sky-700 mr-1.5">📌 제안 이유</span>{background.trim()}
+                  </div>
+                )}
+                {/* 관련 자료 */}
+                {researchItems.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="text-[11px] font-black text-slate-400 self-center">🔗 관련 자료</span>
+                    {researchItems.map((item, i) => (
+                      item.url ? (
+                        <a key={i} href={item.url} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-sky-700 hover:bg-sky-100 border border-slate-200 font-medium max-w-[200px] truncate"
+                          title={item.title || item.url}
+                        >
+                          {item.title || item.url}
+                        </a>
+                      ) : (
+                        <span key={i}
+                          className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium max-w-[200px] truncate"
+                          title={item.title}
+                        >
+                          {item.title}
+                        </span>
+                      )
+                    ))}
+                  </div>
+                )}
+                {/* 구분선 */}
+                <hr className="border-slate-200" />
+                {/* 전광판 안내 / 표결 버튼 */}
+                {billBoardActive ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    <button onClick={() => castFinalVote('pro')}
+                      className={`py-2.5 text-sm rounded-lg font-bold ${myFinalChoice === 'pro' ? 'bg-emerald-600 text-white shadow' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}>
+                      ✅ 찬성
+                    </button>
+                    <button onClick={() => castFinalVote('con')}
+                      className={`py-2.5 text-sm rounded-lg font-bold ${myFinalChoice === 'con' ? 'bg-rose-600 text-white shadow' : 'bg-rose-50 text-rose-800 hover:bg-rose-100'}`}>
+                      ❌ 반대
+                    </button>
+                    <button onClick={() => castFinalVote('abstain')}
+                      className={`py-2.5 text-sm rounded-lg font-bold ${myFinalChoice === 'abstain' ? 'bg-gray-500 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                      ⚪ 기권
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-3 text-center text-sm text-amber-900 font-semibold">
+                    🎬 선생님이 전광판을 띄우면 표결할 수 있어요
+                  </div>
+                )}
               </div>
             )
-          )}
+          })()}
 
           {/* 진행 게이지 (학생/교사 공용) */}
           {finalTally.total > 0 && (

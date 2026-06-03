@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import useGameStore from '../../../store/gameStore'
 import { pushUnder, updateAt } from '../../../lib/rtdb-helpers'
 import { DraftSaver } from '../../../lib/draft-saver'
@@ -251,35 +251,52 @@ function DebatePrepCard({ session, prepCards = [], isPublic = false, mode = 'edi
   const STANCES = prepConfig.stances
   const cleanSources = useMemo(() => normalizeDebatePrepSources(sources), [sources])
 
-  const [hasDraft, setHasDraft] = useState(false)
+  const [autoSavedAt, setAutoSavedAt] = useState(null) // 마지막 자동저장 시각
+  const autoSaveTimer = useRef(null)
+
+  // 마운트 시 임시저장본 자동 복원 (제출 완료 전이고 내용이 없을 때만)
   useEffect(() => {
-    if (DraftSaver.load('debate_prep')) setHasDraft(true)
-  }, [])
+    if (myCard) return // 이미 제출했으면 복원 불필요
+    const d = DraftSaver.load('debate_prep')
+    if (!d?.data) return
+    const { stance: s, mainClaim: mc, evidence: ev, rebuttal: rb, counterRebuttal: cr, sources: src,
+            evalViewpoint: evp, evalCriteria: evc, evalFocus: evf, evalPrediction: evpr } = d.data
+    if (mc || ev || rb || cr || evp || evc) {
+      if (s) setStance(s)
+      setMainClaim(mc || '')
+      setEvidence(ev || '')
+      setRebuttal(rb || '')
+      setCounterRebuttal(cr || '')
+      setSources(Array.isArray(src) && src.length ? src : [emptySource()])
+      if (evp) setEvalViewpoint(evp)
+      if (evc) setEvalCriteria(evc)
+      if (evf) setEvalFocus(evf)
+      if (evpr) setEvalPrediction(evpr)
+      setAutoSavedAt(d.timestamp)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // 마운트 1회만
+
+  // 필드 변경 시 1.5초 디바운스 자동저장
+  useEffect(() => {
+    if (myCard) return // 제출 완료 후엔 저장 불필요
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      DraftSaver.save('debate_prep', {
+        stance, mainClaim, evidence, rebuttal, counterRebuttal, sources,
+        evalViewpoint, evalCriteria, evalFocus, evalPrediction,
+      })
+      setAutoSavedAt(Date.now())
+    }, 1500)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [stance, mainClaim, evidence, rebuttal, counterRebuttal, sources,
+      evalViewpoint, evalCriteria, evalFocus, evalPrediction, myCard])
 
   useEffect(() => {
     if (!STANCES.includes(stance)) {
       setStance(myCard?.stance && STANCES.includes(myCard.stance) ? myCard.stance : STANCES[0])
     }
   }, [STANCES, stance, myCard?.stance])
-
-  const onSaveDraft = () => {
-    DraftSaver.save('debate_prep', { stance, mainClaim, evidence, rebuttal, counterRebuttal, sources })
-    setHasDraft(true)
-    alert('임시저장되었습니다.')
-  }
-
-  const onLoadDraft = () => {
-    const d = DraftSaver.load('debate_prep')
-    if (d && d.data) {
-      setStance(d.data.stance || '찬성')
-      setMainClaim(d.data.mainClaim || '')
-      setEvidence(d.data.evidence || '')
-      setRebuttal(d.data.rebuttal || '')
-      setCounterRebuttal(d.data.counterRebuttal || '')
-      setSources(Array.isArray(d.data.sources) && d.data.sources.length ? d.data.sources : [emptySource()])
-      alert('임시저장된 내용을 불러왔습니다.')
-    }
-  }
 
   const updateSource = (index, patch) => {
     setSources((prev) => prev.map((source, sourceIndex) => (
@@ -344,7 +361,7 @@ function DebatePrepCard({ session, prepCards = [], isPublic = false, mode = 'edi
         await pushUnder(roomCode, `debateSessions/${session.id}/prepCards`, payload)
       }
       DraftSaver.clear('debate_prep')
-      setHasDraft(false)
+      setAutoSavedAt(null)
     } catch (err) {
       setError(err.message || '제출 실패')
     } finally {
@@ -390,24 +407,11 @@ function DebatePrepCard({ session, prepCards = [], isPublic = false, mode = 'edi
               <span className="bg-amber-100 p-1.5 rounded-lg text-lg">📝</span>
               토론 준비 카드 작성
             </h3>
-            <div className="flex gap-1">
-              {hasDraft && !myCard && (
-                <button
-                  type="button"
-                  onClick={onLoadDraft}
-                  className="text-[10px] px-2 py-1 bg-amber-100 text-amber-700 rounded border border-amber-200 font-bold hover:bg-amber-200"
-                >
-                  📂 불러오기
-                </button>
-              )}
-              {!myCard && (
-                <button
-                  type="button"
-                  onClick={onSaveDraft}
-                  className="text-[10px] px-2 py-1 bg-amber-50 text-amber-700 rounded border border-amber-100 font-bold hover:bg-amber-100"
-                >
-                  💾 임시저장
-                </button>
+            <div className="flex gap-1 items-center">
+              {!myCard && autoSavedAt && (
+                <span className="text-[10px] px-2 py-1 rounded-full bg-gray-100 text-gray-400 font-bold">
+                  💾 자동저장됨
+                </span>
               )}
               {myCard && (
                 <span className="text-[10px] px-3 py-1 rounded-full bg-emerald-500 text-white font-black shadow-sm">

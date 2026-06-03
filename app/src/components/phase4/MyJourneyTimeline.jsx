@@ -688,13 +688,23 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
           {/* 10. 댓글 및 다축 평가 상세 시각화 */}
           {act.type === 'comment' && (
             <div className="space-y-3.5">
-              <div className="bg-white/90 border border-indigo-150 rounded-2xl p-4 shadow-sm">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">💬 댓글이 달린 원글</p>
-                <h4 className="text-sm font-black text-indigo-900 leading-snug">
+              {/* 1. 작성한 댓글 내용 (가장 위) */}
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 shadow-inner">
+                <span className="block text-[9px] font-bold text-indigo-700 uppercase tracking-wider mb-1">✍️ 작성한 댓글 내용</span>
+                <p className="text-sm leading-relaxed text-indigo-950 font-bold">
+                  "{act.commentBody}"
+                </p>
+              </div>
+
+              {/* 2. 원글보기 (작은 라벨 + 원글 제목) */}
+              <div className="bg-white/90 border border-indigo-150 rounded-2xl p-3.5 shadow-sm">
+                <p className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">🔍 원글보기</p>
+                <h4 className="text-xs font-black text-indigo-900 leading-snug">
                   {act.targetTitle}
                 </h4>
               </div>
               
+              {/* 3. 3축 평가 점수 */}
               {act.ratings && Object.keys(act.ratings).length > 0 && (
                 <div className="bg-white/90 border rounded-2xl p-4 shadow-sm space-y-2">
                   <p className="text-[10px] font-bold text-gray-500">📊 내가 매긴 3축 평가 점수</p>
@@ -711,13 +721,6 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
                   </div>
                 </div>
               )}
-
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 shadow-inner">
-                <span className="block text-[9px] font-bold text-indigo-700 uppercase tracking-wider mb-1">✍️ 작성한 댓글 내용</span>
-                <p className="text-sm leading-relaxed text-indigo-950 font-bold">
-                  "{act.commentBody}"
-                </p>
-              </div>
             </div>
           )}
         </div>
@@ -1219,7 +1222,7 @@ export default function MyJourneyTimeline() {
         icon: '💬',
         shortTitle: '댓글 작성',
         stepLabel: '동료 평가 및 댓글 작성',
-        title: `💬 동료 자료에 남긴 댓글`,
+        title: `내가 작성한 댓글`,
         targetTitle,
         commentBody: c.body,
         ratings: c.ratings || {},
@@ -1302,114 +1305,107 @@ export default function MyJourneyTimeline() {
           const m = PHASE_META[p]
           const isCompleted = phaseCompleted[p]
           return (
-            <span key={p} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full shadow-2xs transition-all"
+            <span key={p} className="relative overflow-visible flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full shadow-2xs transition-all"
               style={{ 
                 background: isCompleted ? '#f0fdf4' : m.bg, 
                 border: isCompleted ? '1.5px solid #bbf7d0' : `1.5px solid ${m.border}`, 
                 color: isCompleted ? '#166534' : m.text 
               }}>
-              {isCompleted ? '✅' : m.emoji} {m.label} {isCompleted && '(완료)'}
+              {m.emoji} {m.label}
+              {isCompleted && (
+                <span className="text-[8px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-1.5 py-0.5 rounded font-black rotate-[-4deg] shadow-xs border border-white ml-0.5">
+                  완료
+                </span>
+              )}
             </span>
           )
         })}
       </div>
 
-      {/* Snake 경로 */}
+      {/* 여정별 그룹 경로 */}
       {activities.length === 0 ? (
         <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border">
           <p className="text-4xl mb-3">📭</p>
           <p className="font-semibold">아직 활동 기록이 없어요.</p>
-          <p className="text-sm mt-1">1~3 여정에서 작성한 글·포스터가 여기 표시됩니다.</p>
+          <p className="text-sm mt-1">1~4 여정에서 작성한 활동이 여기 표시됩니다.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6">
-          {rows.map((row, rowIdx) => {
-            const reversed = rowIdx % 2 === 1
-            const displayRow = reversed ? [...row].reverse() : row
-            const rowStart = rowIdx * COLS
-            const turnDir = reversed ? 'left' : 'right'
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-6">
+          {[1, 2, 3, 4].map((p) => {
+            const m = PHASE_META[p]
+            const phaseActs = activities.filter(act => act.phase === p)
+            if (phaseActs.length === 0) return null
+
+            // 5개씩 쪼개기
+            const phaseRows = []
+            for (let i = 0; i < phaseActs.length; i += 5) {
+              phaseRows.push(phaseActs.slice(i, i + 5))
+            }
+
+            const isCompleted = phaseCompleted[p]
 
             return (
-              <div key={rowIdx}>
+              <div key={p} className="space-y-4">
                 {/* 여정 구분선 라벨 */}
-                {(() => {
-                  const labels = []
-                  const seen = new Set()
-                  row.forEach((act, i) => {
-                    const globalIdx = rowStart + i
-                    const prevPhase = globalIdx > 0 ? activities[globalIdx - 1]?.phase : null
-                    if (act.phase !== prevPhase && !seen.has(act.phase)) {
-                      seen.add(act.phase)
-                      const m = PHASE_META[act.phase]
-                      const isCompleted = phaseCompleted[act.phase]
-                      labels.push(
-                        <div key={act.phase} className="flex items-center gap-2 mb-3 mt-4 px-3 py-2 rounded-2xl shadow-sm border animate-in fade-in duration-300"
-                          style={{ 
-                            background: isCompleted ? '#f0fdf4' : m.bg, 
-                            borderColor: isCompleted ? '#bbf7d0' : m.border 
-                          }}>
-                          <span className="text-xl">{isCompleted ? '✅' : m.emoji}</span>
-                          <div className="flex flex-col">
-                            <span className="text-xs font-black" style={{ color: isCompleted ? '#166534' : m.text }}>
-                              {m.label} {isCompleted && <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black ml-1">평가 완료</span>}
-                            </span>
-                            <span className="text-[10px] opacity-75 font-semibold text-gray-500">
-                              {isCompleted ? '🎉 이 여정의 모든 활동 평가를 완료했습니다!' : `${m.sub} 단계 활동 시작 🚀`}
-                            </span>
-                          </div>
-                          <div className="flex-1 h-[2px] border-t border-dashed" style={{ borderColor: isCompleted ? '#bbf7d0' : m.border }} />
-                        </div>
-                      )
-                    }
-                  })
-                  return labels
-                })()}
-
-                {/* 노드 행 */}
-                <div className={`flex items-start ${reversed ? 'flex-row-reverse' : ''}`}>
-                  {displayRow.map((act, colIdx) => {
-                    const globalIdx = reversed
-                      ? rowStart + (row.length - 1 - colIdx)
-                      : rowStart + colIdx
-                    const currentMeta = PHASE_META[act.phase]
-                    return (
-                      <div key={act.key} className="flex items-center" style={{ flex: 1, minWidth: 0 }}>
-                        <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                          <Node
-                            act={act}
-                            index={globalIdx}
-                            ratings={ratings}
-                            isActive={activeIdx === globalIdx}
-                            onClick={(i) => setActiveIdx(activeIdx === i ? null : i)}
-                          />
-                        </div>
-                        {/* 수평 연결선 */}
-                        {colIdx < displayRow.length - 1 && (
-                          <HConnector reversed={reversed} color={currentMeta?.color} />
-                        )}
-                      </div>
-                    )
-                  })}
-                  {/* 행이 COLS보다 짧으면 빈 공간으로 채움 */}
-                  {row.length < COLS && Array.from({ length: COLS - row.length }).map((_, i) => (
-                    <div key={`empty-${i}`} style={{ flex: 1 }} />
-                  ))}
+                <div className="relative overflow-visible flex items-center gap-2 px-3 py-2 rounded-2xl shadow-sm border"
+                  style={{ 
+                    background: isCompleted ? '#f0fdf4' : m.bg, 
+                    borderColor: isCompleted ? '#bbf7d0' : m.border 
+                  }}>
+                  <span className="text-xl">{m.emoji}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black" style={{ color: isCompleted ? '#166534' : m.text }}>
+                      {m.label}
+                    </span>
+                    <span className="text-[10px] opacity-75 font-semibold text-gray-500">
+                      {isCompleted ? '🎉 이 여정의 모든 활동 평가를 완료했습니다!' : `${m.sub} 단계 활동 시작 🚀`}
+                    </span>
+                  </div>
+                  <div className="flex-1 h-[2px] border-t border-dashed" style={{ borderColor: isCompleted ? '#bbf7d0' : m.border }} />
+                  
+                  {/* 기울어진 입체 완료 스티커 */}
+                  {isCompleted && (
+                    <div className="absolute -right-1.5 -top-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg border-2 border-white shadow-md rotate-[-6deg] select-none flex items-center gap-1 transform transition hover:scale-105 active:scale-95 duration-200">
+                      <span>🏷️</span>
+                      <span>평가 완료</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* 행 사이 꺾임 커넥터 */}
-                {rowIdx < rows.length - 1 && (() => {
-                  const lastAct = reversed ? row[0] : row[row.length - 1]
-                  const lastMeta = PHASE_META[lastAct?.phase || 1]
-                  return <SnakeConnector direction={turnDir} color={lastMeta?.color} />
-                })()}
+                {/* 노드 행들 (모두 왼쪽 -> 오른쪽 흐름) */}
+                <div className="space-y-4 pt-1">
+                  {phaseRows.map((row, rowIdx) => (
+                    <div key={rowIdx} className="flex items-start">
+                      {row.map((act, colIdx) => {
+                        const globalIdx = activities.findIndex(a => a.key === act.key)
+                        return (
+                          <div key={act.key} className="flex items-center" style={{ flex: 1, minWidth: 0 }}>
+                            <div className="flex flex-col items-center" style={{ flex: 1 }}>
+                              <Node
+                                act={act}
+                                index={globalIdx}
+                                ratings={ratings}
+                                isActive={activeIdx === globalIdx}
+                                onClick={(i) => setActiveIdx(activeIdx === i ? null : i)}
+                              />
+                            </div>
+                            {/* 수평 연결선 (마지막 칸이 아닐 때만) */}
+                            {colIdx < row.length - 1 && (
+                              <HConnector reversed={false} color={m.color} />
+                            )}
+                          </div>
+                        )
+                      })}
+                      {/* 행이 5개보다 짧으면 빈 공간으로 채움 */}
+                      {row.length < 5 && Array.from({ length: 5 - row.length }).map((_, i) => (
+                        <div key={`empty-${i}`} style={{ flex: 1 }} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
             )
           })}
-
-          {/* 완료 깃발 */}
-          <div className="flex justify-center mt-4">
-            <span className="text-3xl animate-bounce">🏁</span>
-          </div>
         </div>
       )}
 

@@ -399,7 +399,7 @@ export default function CanvaCardNewsStep() {
         icon: '💬',
         shortTitle: '댓글 작성',
         stepLabel: '동료 평가 및 댓글 작성',
-        title: `💬 동료 자료에 남긴 댓글`,
+        title: `내가 작성한 댓글`,
         targetTitle,
         commentBody: c.body,
         ratings: c.ratings || {},
@@ -778,33 +778,39 @@ export default function CanvaCardNewsStep() {
                           {/* 9. 내가 작성한 댓글 및 동료 평가 상세 피드 */}
                           {act.type === 'comment' && (
                             <div className="space-y-2.5 max-w-sm">
+                              {/* 1. 작성한 댓글 내용 (가장 위) */}
+                              <div className="p-3 bg-white rounded-xl border leading-relaxed text-xs shadow-2xs">
+                                <span className="font-bold text-indigo-700 block mb-1">✍️ 내가 작성한 댓글</span>
+                                <p className="font-semibold text-gray-800">"${act.commentBody}"</p>
+                              </div>
+
+                              {/* 2. 원글보기 (작은 라벨 + 원글 제목) */}
                               <div className="bg-white p-3 rounded-xl border shadow-2xs">
-                                <span className="text-[9px] font-bold text-gray-400 block mb-1">💬 댓글 대상 원글</span>
-                                <p className="font-extrabold text-gray-800 text-xs">{act.targetTitle}</p>
+                                <span className="text-[9px] font-bold text-gray-400 block mb-1">🔍 원글보기</span>
+                                <p className="font-extrabold text-indigo-900 text-xs">${act.targetTitle}</p>
                               </div>
                               
+                              {/* 3. 3축 평가 점수 */}
                               {act.ratings && Object.keys(act.ratings).length > 0 && (
-                                <div className="bg-white p-3 rounded-xl border grid grid-cols-3 gap-1.5 text-center text-[10px] shadow-2xs">
-                                  {Object.entries(act.ratings).map(([axis, val]) => {
-                                    const labelMap = { relevance: '공익/정확', feasibility: '실행/배려', logic: '타당/설득' }
-                                    return (
-                                      <div key={axis} className="bg-slate-50 border rounded-lg p-1.5">
-                                        <span className="block text-[8px] text-gray-400 font-bold mb-0.5">{labelMap[axis] || axis}</span>
-                                        <span className="font-mono text-amber-500 font-black">★ {val}</span>
-                                      </div>
-                                    )
-                                  })}
+                                <div className="bg-white p-3 rounded-xl border shadow-2xs space-y-1.5">
+                                  <p className="text-[9px] font-bold text-gray-400 block">📊 내가 매긴 3축 평가 점수</p>
+                                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                                    {Object.entries(act.ratings).map(([axis, val]) => {
+                                      const labelMap = { relevance: '공익/정확', feasibility: '실행/배려', logic: '타당/설득' }
+                                      return (
+                                        <div key={axis} className="bg-slate-50 border rounded-lg p-1.5">
+                                          <span className="block text-[8px] text-gray-400 font-bold mb-0.5">{labelMap[axis] || axis}</span>
+                                          <span className="font-mono text-amber-550 font-black">★ {val}</span>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
                                 </div>
                               )}
-
-                              <div className="p-3 bg-white rounded-xl border leading-relaxed text-xs shadow-2xs">
-                                <span className="font-bold text-indigo-700 block mb-1">✍️ 작성한 댓글:</span>
-                                <p className="font-semibold text-gray-800">"{act.commentBody}"</p>
-                              </div>
                             </div>
                           )}
 
-                          {/* 10. 본문 텍스트 콘텐츠 */}
+                                                    {/* 10. 본문 텍스트 콘텐츠 */}
                           {act.content && act.type !== 'comment' && (
                             <div className="p-3 bg-white rounded-xl border leading-relaxed text-xs whitespace-pre-wrap shadow-2xs">
                               {act.content}

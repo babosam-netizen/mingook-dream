@@ -408,13 +408,14 @@ export default function CanvaCardNewsStep() {
       })
     })
 
-    // 여정별 단계 번호 (phaseStep) 동적 부여
+    // 여정별 단계 번호 및 전역 발자취 번호 동적 부여
     const phaseCounts = { 1: 0, 2: 0, 3: 0, 4: 0 }
-    const processedActs = acts.map(act => {
+    const processedActs = acts.map((act, idx) => {
       phaseCounts[act.phase]++
       return {
         ...act,
-        phaseStep: phaseCounts[act.phase]
+        phaseStep: phaseCounts[act.phase],
+        globalStep: idx + 1
       }
     })
 
@@ -491,7 +492,7 @@ export default function CanvaCardNewsStep() {
                             {'★'.repeat(act.score)}
                           </span>
                           <span className="text-[9px] font-black shrink-0 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/50">
-                            {act.phase}여정 · {act.phaseStep}단계
+                            발자취 {act.globalStep}
                           </span>
                           <span className="text-xs font-black truncate">{act.title}</span>
                         </div>

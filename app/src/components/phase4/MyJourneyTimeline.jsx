@@ -68,7 +68,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
               <span className="text-2xl">{act.icon || meta.emoji}</span>
               <span className="text-[11px] font-black px-3 py-1 rounded-full uppercase border-2 shadow-sm"
                 style={{ background: meta.bg, borderColor: meta.color, color: meta.color }}>
-                ✨ {meta.label} · {act.stepLabel}
+                ✨ 발자취 {act.globalStep} · {act.stepLabel}
               </span>
             </div>
             <h3 className="font-black text-base md:text-lg leading-snug text-gray-800">
@@ -780,10 +780,10 @@ function Node({ act, index, ratings, isActive, onClick }) {
   const score = ratings[act.key] || 0
   return (
     <div className="flex flex-col items-center gap-2 relative animate-fade-in" style={{ minWidth: 76 }}>
-      {/* 여정과 단계 표시 */}
+      {/* 내 발자취 순서 번호 표시 */}
       <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border transition-all duration-200"
         style={{ background: meta.bg, borderColor: meta.color, color: meta.text }}>
-        {act.phase}여정 · {act.phaseStep}단계
+        발자취 {act.globalStep}
       </span>
 
       {/* 원형 노드 */}
@@ -1228,13 +1228,14 @@ export default function MyJourneyTimeline() {
       })
     })
 
-    // 여정별 단계 번호 (phaseStep) 동적 부여
+    // 여정별 단계 번호 및 전역 발자취 번호 동적 부여
     const phaseCounts = { 1: 0, 2: 0, 3: 0, 4: 0 }
-    const processedActs = acts.map(act => {
+    const processedActs = acts.map((act, idx) => {
       phaseCounts[act.phase]++
       return {
         ...act,
-        phaseStep: phaseCounts[act.phase]
+        phaseStep: phaseCounts[act.phase],
+        globalStep: idx + 1
       }
     })
 

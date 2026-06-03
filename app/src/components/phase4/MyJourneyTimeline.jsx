@@ -3,6 +3,7 @@ import useGameStore from '../../store/gameStore'
 import { subscribe, updateAt, getOnce } from '../../lib/rtdb-helpers'
 import PosterMedia from '../phase1/PosterMedia'
 import { calculateRanks } from '../../lib/election'
+import { formatCanvaEmbedUrl } from '../../lib/canva-embed'
 
 /**
  * 1단계: 민국에서 나의 발자취 돌아보기
@@ -53,23 +54,23 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div
-        className="relative z-10 w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative z-10 w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all"
         style={{ background: meta.bg, border: `3px solid ${meta.border}` }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 상단 헤더 & 별점 영역 */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100/50 flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="text-2xl">{act.icon || meta.emoji}</span>
-              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase border shadow-sm"
-                style={{ background: meta.color + '15', borderColor: meta.color + '44', color: meta.color }}>
-                {meta.label} · {act.stepLabel}
+              <span className="text-[11px] font-black px-3 py-1 rounded-full uppercase border-2 shadow-sm"
+                style={{ background: meta.bg, borderColor: meta.color, color: meta.color }}>
+                ✨ {meta.label} · {act.stepLabel}
               </span>
             </div>
-            <h3 className="font-black text-base md:text-lg leading-snug animate-in fade-in duration-350" style={{ color: meta.text }}>
+            <h3 className="font-black text-base md:text-lg leading-snug text-gray-800">
               {act.title}
             </h3>
           </div>
@@ -98,7 +99,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
         </div>
 
         {/* 중앙 본문 (전체 펼침 상태 및 시각화 지원) */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           
           {/* 1. 포스터인 경우 미디어 미리보기 */}
           {act.type === 'poster' && act.poster && (
@@ -150,7 +151,108 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
-          {/* 3. 설문 여론조사 결과 시각화 (나의 선택 + 전체 결과) */}
+          {/* 3. 후보자 등록 정보 전체 시각화 */}
+          {act.type === 'candidate' && act.candidate && (() => {
+            const c = act.candidate
+            const group = groups?.[c.groupId]
+            return (
+              <div className="space-y-4">
+                {/* 기호 및 모둠 정보 */}
+                <div className="bg-white/95 border-2 border-rose-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black mb-1">
+                      기호 {c.candidateNumber ?? c.leaderNumber}번
+                    </span>
+                    <h4 className="text-base font-black text-gray-900">
+                      {c.leaderNickname || c.candidateName} 후보
+                    </h4>
+                    {group && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{group.name}</p>}
+                  </div>
+                </div>
+
+                {/* 출마 선언문 */}
+                {c.pamphlet && (
+                  <div className="bg-white/95 rounded-2xl p-4 border border-rose-100/50 text-xs text-gray-700 leading-relaxed italic shadow-inner">
+                    <span className="block text-[9px] font-bold text-rose-500 not-italic uppercase mb-1.5 tracking-wider">📢 출마 선언문</span>
+                    "{c.pamphlet}"
+                  </div>
+                )}
+
+                {/* 선거 포스터 */}
+                {(c.posterCanvaUrl || c.posterUrl) && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">🖼️ 선거 캠페인 포스터</span>
+                    {c.posterCanvaUrl ? (
+                      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border bg-slate-50 shadow">
+                        <iframe
+                          src={formatCanvaEmbedUrl(c.posterCanvaUrl)}
+                          loading="lazy"
+                          allowFullScreen
+                          allow="fullscreen; autoplay"
+                          className="absolute inset-0 w-full h-full border-0"
+                          title="선거 포스터"
+                        />
+                      </div>
+                    ) : (
+                      <img src={c.posterUrl} alt="선거 포스터" className="w-full rounded-2xl border bg-white shadow-sm" />
+                    )}
+                  </div>
+                )}
+
+                {/* 최우선과제 해결 공약 */}
+                {Array.isArray(c.pledges) && c.pledges.filter(Boolean).length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">✅ 최우선과제 해결 공약</span>
+                    <ul className="space-y-2">
+                      {c.pledges.filter(Boolean).map((p, i) => (
+                        <li key={i} className="flex items-start gap-2.5 bg-rose-50/50 p-3 rounded-xl border border-rose-100/50 shadow-sm">
+                          <span className="shrink-0 w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black flex items-center justify-center">
+                            {i + 1}
+                          </span>
+                          <p className="text-xs font-semibold text-rose-900 leading-relaxed">{p}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* 공약 카드뉴스 */}
+                {c.canvaUrl && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">🎨 공약 카드뉴스 (자료집)</span>
+                    <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden border bg-slate-50 shadow">
+                      <iframe
+                        src={formatCanvaEmbedUrl(c.canvaUrl)}
+                        loading="lazy"
+                        allowFullScreen
+                        allow="fullscreen; autoplay"
+                        className="absolute inset-0 w-full h-full border-0"
+                        title="공약 카드뉴스"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 홍보영상 */}
+                {c.videoCanvaUrl && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">🎬 후보 홍보 동영상</span>
+                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden border bg-slate-900 shadow">
+                      <iframe
+                        src={formatCanvaEmbedUrl(c.videoCanvaUrl)}
+                        allowFullScreen
+                        allow="fullscreen; autoplay; encrypted-media"
+                        className="absolute inset-0 w-full h-full border-0"
+                        title="홍보영상"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* 4. 설문 여론조사 결과 시각화 (나의 선택 + 전체 결과) */}
           {act.type === 'poll' && act.rawPoll && (() => {
             const p = act.rawPoll
             const votes = p.votes || {}
@@ -198,7 +300,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
-          {/* 4. 토론 여론조사 (사전/사후) 비교 시각화 */}
+          {/* 5. 토론 여론조사 (사전/사후) 비교 시각화 */}
           {act.type === 'debate_poll' && act.debateSession && (() => {
             const s = act.debateSession
             const prePoll = s.stancePoll?.pre || {}
@@ -323,7 +425,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
-          {/* 5. 대통령 선거 투표 결과 시각화 */}
+          {/* 6. 대통령 선거 투표 결과 시각화 */}
           {act.type === 'election' && act.rawVotes && (() => {
             const votes = act.rawVotes
             const totalVotes = Object.keys(votes).length
@@ -364,7 +466,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
-          {/* 6. 의회 법안 의결 표결 결과 시각화 */}
+          {/* 7. 의회 법안 의결 표결 결과 시각화 */}
           {act.type === 'billvote' && act.rawVotes && (() => {
             const votes = act.rawVotes
             const myChoice = votes[myStudentId]
@@ -411,7 +513,7 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
-          {/* 7. 재판 배심원 표결 결과 시각화 */}
+          {/* 8. 재판 배심원 표결 결과 시각화 */}
           {act.type === 'juryvote' && act.rawVotes && (() => {
             const votes = act.rawVotes
             const myChoice = votes[myStudentId]
@@ -457,15 +559,15 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
-          {/* 8. 일반 텍스트 콘텐츠 */}
+          {/* 9. 일반 텍스트 콘텐츠 */}
           {act.content ? (
             <div className="rounded-2xl p-5 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-gray-100 max-h-[30vh] overflow-y-auto"
               style={{ background: 'rgba(255,255,255,0.75)' }}>
               {act.content}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-400 text-xs">
-              상세 활동 내용이 없습니다.
+            <div className="text-center py-8 text-gray-400 text-xs animate-pulse">
+              {!act.content && act.type !== 'candidate' && '상세 활동 내용이 없습니다.'}
             </div>
           )}
         </div>
@@ -723,10 +825,11 @@ export default function MyJourneyTimeline() {
       acts.push({
         key: 'phase2_candidate', phase: 2,
         type: 'candidate',
+        candidate: c,
         icon: '🗳️', shortTitle: '후보등록',
         stepLabel: '대통령 후보 등록',
-        title: c.candidateName ? `후보: ${c.candidateName}` : '후보 등록',
-        content: `[대표 공약]\n${c.pledge || c.manifesto || ''}`,
+        title: c.candidateName || c.leaderNickname ? `후보: ${c.candidateName || c.leaderNickname}` : '대통령 후보 등록',
+        content: '',
       })
     }
 
@@ -895,7 +998,7 @@ export default function MyJourneyTimeline() {
     Object.entries(debateSessions).forEach(([sid, s]) => {
       const preVote = s.stancePoll?.pre?.votes?.[myStudentId]
       const postVote = s.stancePoll?.post?.votes?.[myStudentId]
-      if (!preVote && !postVote) return // 본인 참여 안 한 토론은 제외
+      if (!preVote && !postVote) return
 
       const phase = Number(s.phase) || 3
 
@@ -990,10 +1093,14 @@ export default function MyJourneyTimeline() {
                       seen.add(act.phase)
                       const m = PHASE_META[act.phase]
                       labels.push(
-                        <div key={act.phase} className="flex items-center gap-1.5 mb-2 mt-2">
-                          <span className="text-base">{m.emoji}</span>
-                          <span className="text-xs font-black" style={{ color: m.text }}>{m.label} — {m.sub}</span>
-                          <div className="flex-1 h-px" style={{ background: m.border }} />
+                        <div key={act.phase} className="flex items-center gap-2 mb-3 mt-4 px-3 py-2 rounded-2xl shadow-sm border animate-in fade-in duration-300"
+                          style={{ background: m.bg, borderColor: m.border }}>
+                          <span className="text-xl animate-bounce">{m.emoji}</span>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black" style={{ color: m.text }}>{m.label}</span>
+                            <span className="text-[10px] opacity-75 font-semibold text-gray-500">{m.sub} 단계 활동 시작 🚀</span>
+                          </div>
+                          <div className="flex-1 h-[2px] border-t border-dashed" style={{ borderColor: m.border }} />
                         </div>
                       )
                     }

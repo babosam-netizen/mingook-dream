@@ -852,26 +852,55 @@ export default function CanvaCardNewsStep() {
 
         {/* 오른쪽: URL 제출 + 미리보기 */}
         <div className="space-y-3">
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3 shadow-sm">
-            <h3 className="font-black text-gray-800 text-sm">📎 카드뉴스 URL 제출</h3>
-            <p className="text-xs text-gray-500">
-              Canva에서 공유 → '링크 복사' 또는 'embed 코드' 중 하나를 붙여 넣으세요.
-            </p>
-            <textarea
-              value={canvaInput}
-              onChange={(e) => setCanvaInput(e.target.value)}
-              rows={3}
-              placeholder="https://www.canva.com/design/... 또는 <iframe ...> 코드"
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none shadow-inner"
-            />
-            {error && <p className="text-xs text-red-650 font-bold bg-red-50 p-2 rounded">{error}</p>}
-            {saved && <p className="text-xs text-emerald-600 font-bold">✓ 저장됐어요!</p>}
+          <div className="bg-white border border-violet-200 rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="border-b border-violet-100 pb-2">
+              <h3 className="font-black text-violet-850 text-sm flex items-center gap-1.5">
+                <span>📎</span> 캔바 임베드 코드 제출
+              </h3>
+              <p className="text-[10px] text-gray-500 mt-0.5 font-medium leading-relaxed">
+                5단계 갤러리워크에서 친구들이 내 카드뉴스를 바로 감상할 수 있도록, 반드시 <strong>임베드(Embed) 코드</strong>를 가져와서 넣어주세요!
+              </p>
+            </div>
+
+            {/* 임베드 코드 복사 방법 가이드 */}
+            <div className="bg-violet-50/50 rounded-xl p-3.5 border border-violet-100 text-xs space-y-2 text-violet-950 font-medium">
+              <p className="font-bold text-violet-850 text-[11px] flex items-center gap-1">
+                <span>💡</span> 캔바에서 임베드 코드 복사하는 방법:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-gray-700 pl-0.5">
+                <li>Canva 편집 화면 우측 상단의 <strong className="text-violet-850">우측 [공유]</strong> 버튼을 누릅니다.</li>
+                <li>아래 메뉴 중 <strong className="text-violet-850">[더 보기](점 3개 •••)</strong>를 누릅니다.</li>
+                <li>목록에서 <strong className="text-violet-850">[임베디드]</strong> 아이콘( <code className="bg-violet-100 text-violet-800 px-1 py-0.2 rounded font-mono font-bold text-[9px]">&lt;/&gt;</code> 모양 )을 선택합니다.</li>
+                <li>활성화 후, <strong className="text-violet-850">‘HTML 임베디드 코드’</strong>의 <strong className="text-violet-900">[복사]</strong>를 누릅니다.</li>
+              </ol>
+              <div className="text-[10px] bg-amber-50/70 text-amber-800 border border-amber-200/50 p-2 rounded-lg leading-relaxed mt-1 flex items-start gap-1">
+                <span className="shrink-0 mt-0.5">⚠️</span>
+                <span>
+                  브라우저 주소창의 링크(canva.com/design/...)나 일반 [링크 복사] 주소는 갤러리에서 정상 동작하지 않을 수 있으니 꼭 <strong>임베디드 코드</strong>를 붙여넣어 주세요!
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider block">✍️ 임베디드 코드 입력</span>
+              <textarea
+                value={canvaInput}
+                onChange={(e) => setCanvaInput(e.target.value)}
+                rows={4}
+                placeholder="<iframe ...> 로 시작하는 Canva 임베디드 코드를 통째로 붙여넣어 주세요."
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent resize-none shadow-inner bg-slate-50/50 leading-relaxed font-mono"
+              />
+            </div>
+
+            {error && <p className="text-xs text-red-650 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
+            {saved && <p className="text-xs text-emerald-600 font-bold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">✓ 성공적으로 저장되었습니다!</p>}
+            
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full py-2.5 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 disabled:opacity-50 transition shadow-md cursor-pointer"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black text-sm hover:from-violet-750 hover:to-indigo-750 disabled:opacity-50 transition-all transform active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
             >
-              {saving ? '저장 중...' : savedUrl ? '✏️ URL 수정 저장' : '제출하기'}
+              <span>{saving ? '저장 중...' : savedUrl ? '✏️ 임베디드 코드 수정' : '제출하기'}</span>
             </button>
           </div>
 

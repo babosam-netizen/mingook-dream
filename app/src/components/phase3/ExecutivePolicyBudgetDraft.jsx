@@ -1758,12 +1758,13 @@ export function ExecutiveFinalViewer({
   badgeClassName,
   headingPrefix = '📄',
   emptyTitle = '제목 없는 정책안',
+  repLabel = '장관',
 }) {
   const content = finalDoc?.content
   const fields = content?.policyFields || { ...emptyPolicyFields }
   const budgetItems = content?.budgetItems || []
   const total = budgetItemTotal(budgetItems)
-  const resolvedBadgeLabel = badgeLabel || (finalDoc?.status === 'locked' ? '제출 완료' : '장관 검토 중 (실시간 반영)')
+  const resolvedBadgeLabel = badgeLabel || (finalDoc?.status === 'locked' ? '제출 완료' : `${repLabel} 검토 중 (실시간 반영)`)
   const resolvedBadgeClassName = badgeClassName || (
     finalDoc?.status === 'locked'
       ? 'bg-emerald-950 text-emerald-400'

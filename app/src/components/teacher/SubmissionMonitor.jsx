@@ -16,6 +16,10 @@ const TABS = [
   { id: 'reflection', label: '📝 정리글', path: 'reflections' },
 ]
 
+// 빈 값은 (빈칸)으로 — 양식 항목을 모두 보여주기 위함
+const blank = (v) => (v !== undefined && v !== null && String(v).trim() !== '' ? String(v) : '(빈칸)')
+const hasVal = (v) => v !== undefined && v !== null && String(v).trim() !== ''
+
 export default function SubmissionMonitor() {
   const roomCode = useGameStore((s) => s.roomCode)
   const groups = useGameStore((s) => s.groups)
@@ -23,6 +27,7 @@ export default function SubmissionMonitor() {
   const [activeTab, setActiveTab] = useState('article')
   const [dataMap, setDataMap] = useState({})
   const [viewingPoster, setViewingPoster] = useState(null)
+  const [topicFilter, setTopicFilter] = useState('all')
 
   useEffect(() => {
     if (!roomCode) return
@@ -57,6 +62,20 @@ export default function SubmissionMonitor() {
       .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
   }, [dataMap, activeTab])
 
+  // 토론 주제(세션)별 필터 — 토론 준비카드/대본 탭에서 제공
+  const supportsTopicFilter = activeTab === 'debatePrep' || activeTab === 'debateScript'
+  const topicOptions = useMemo(() => {
+    if (!supportsTopicFilter) return []
+    const set = new Set()
+    items.forEach((it) => { if (it.sessionTitle) set.add(it.sessionTitle) })
+    return Array.from(set)
+  }, [items, supportsTopicFilter])
+
+  const visibleItems = useMemo(() => {
+    if (!supportsTopicFilter || topicFilter === 'all') return items
+    return items.filter((it) => (it.sessionTitle || '') === topicFilter)
+  }, [items, supportsTopicFilter, topicFilter])
+
   return (
     <div className="flex flex-col h-full gap-4">
       {/* 탭 바 */}
@@ -67,6 +86,7 @@ export default function SubmissionMonitor() {
             onClick={() => {
               setActiveTab(tab.id)
               setDataMap({}) // 탭 전환 시 이전 데이터 잠깐 비움
+              setTopicFilter('all')
             }}
             className={`shrink-0 px-4 py-2 rounded-xl text-xs font-black transition-all ${
               activeTab === tab.id
@@ -79,21 +99,51 @@ export default function SubmissionMonitor() {
         ))}
       </div>
 
+      {/* 보조 필터 — 토론 주제(세션)별 */}
+      {supportsTopicFilter && topicOptions.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap -mt-1">
+          <span className="text-[10px] font-black text-slate-400 mr-1">토론 주제</span>
+          <button
+            onClick={() => setTopicFilter('all')}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition ${
+              topicFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            전체 ({items.length})
+          </button>
+          {topicOptions.map((title) => {
+            const count = items.filter((it) => (it.sessionTitle || '') === title).length
+            return (
+              <button
+                key={title}
+                onClick={() => setTopicFilter(title)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition max-w-[220px] truncate ${
+                  topicFilter === title ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+                }`}
+                title={title}
+              >
+                {title} ({count})
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* 목록 영역 */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[400px]">
-        {items.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-300 italic">
              <span className="text-4xl mb-2">💨</span>
              <p>아직 제출된 내역이 없습니다.</p>
           </div>
         ) : (
-          items.map((item) => (
-            <SubmissionItem 
-              key={item.id} 
-              type={activeTab} 
-              data={item} 
-              groups={groups} 
-              students={students} 
+          visibleItems.map((item) => (
+            <SubmissionItem
+              key={item.id}
+              type={activeTab}
+              data={item}
+              groups={groups}
+              students={students}
               onExpandImage={setViewingPoster}
             />
           ))
@@ -161,22 +211,33 @@ function SubmissionItem({ type, data, groups, students, onExpandImage }) {
             </div>
           </div>
         )
-      case 'debatePrep':
+      case 'debatePrep': {
+        const prepFields = [
+          ['핵심 주장/입장', data.mainClaim],
+          ['근거·자료', data.evidence],
+          ['반박/허점', data.rebuttal],
+          ['예상 질문·대응', data.counterRebuttal],
+        ]
         return (
           <div className="space-y-2">
-             <div className="flex items-center justify-between">
-               <h4 className="font-black text-slate-900 text-sm">{data.studentNumber}번 {data.studentName} 카드</h4>
-               <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">{data.sessionTitle}</span>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-black text-slate-900 text-sm">{data.studentNumber}번 {data.studentName} 카드</h4>
+              <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold shrink-0 max-w-[160px] truncate" title={data.sessionTitle}>{data.sessionTitle}</span>
             </div>
-            <div className="grid grid-cols-1 gap-1.5 mt-2">
-               <div className="text-[11px]"><span className="font-bold text-amber-600">주장:</span> {data.mainClaim}</div>
-               <div className="text-[11px]"><span className="font-bold text-blue-600">근거:</span> {data.evidence}</div>
+            <div className="grid grid-cols-1 gap-1.5 mt-1">
+              {prepFields.map(([label, val]) => (
+                <div key={label} className="text-[11px] leading-relaxed">
+                  <span className="font-bold text-slate-600">{label}:</span>{' '}
+                  <span className={hasVal(val) ? 'text-slate-800 whitespace-pre-wrap' : 'text-slate-300 italic'}>{blank(val)}</span>
+                </div>
+              ))}
             </div>
             <div className="text-[10px] text-slate-400">
-               {data.groupName} · {data.stance} 입장
+              {data.groupName || '모둠 미상'} · {blank(data.stance)} 입장
             </div>
           </div>
         )
+      }
       case 'debateScript':
         return (
           <div className="space-y-2">
@@ -184,8 +245,8 @@ function SubmissionItem({ type, data, groups, students, onExpandImage }) {
                <h4 className="font-black text-slate-900 text-sm">{data.sideId === 'pro' ? '찬성' : data.sideId === 'con' ? '반대' : data.sideId} 대본</h4>
                <span className="text-[10px] bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full font-bold">{data.sessionTitle}</span>
             </div>
-            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-               {data.body}
+            <p className={`text-xs whitespace-pre-wrap leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100 ${hasVal(data.body) ? 'text-slate-700' : 'text-slate-300 italic'}`}>
+               {blank(data.body)}
             </p>
             <div className="text-[10px] text-slate-400">
                마지막 작성: {data.lastAuthor || '알 수 없음'}

@@ -149,13 +149,21 @@ function ExecutivePolicyDiscussionList() {
   const myStudentId = useGameStore((s) => s.myStudentId)
   const branchConfig = useGameStore((s) => s.config?.branchConfig)
   const totalCap = branchConfig?.executive?.totalBudget ?? 100
+  const presidentGroupId = branchConfig?.executive?.presidentGroupId || null
   const [policies, setPolicies] = useState({})
+  const [presidentDirectives, setPresidentDirectives] = useState({})
 
   useEffect(() => {
     if (!roomCode) return
     const u = subscribe(roomCode, 'policies', (d) => setPolicies(d || {}))
-    return () => u?.()
+    const u2 = subscribe(roomCode, 'branchDrafts/exe-president/directives', (d) => setPresidentDirectives(d || {}))
+    return () => { u?.(); u2?.() }
   }, [roomCode])
+
+  const directiveList = useMemo(
+    () => Object.values(presidentDirectives || {}).filter((d) => d && (d.text || '').trim()),
+    [presidentDirectives]
+  )
 
   const myGroupId = useMemo(() => {
     if (!myStudentId) return null
@@ -229,11 +237,12 @@ function ExecutivePolicyDiscussionList() {
         const requested = Number(p.requestedBudget ?? p.draftBudget) || 0
         const budgetItems = Array.isArray(p.budgetItems) ? p.budgetItems : []
         const isSavedOnly = p.status === 'saved'
+        const isPresident = (presidentGroupId && p.gid === presidentGroupId) || String(p.ministryName || '').includes('대통령')
         return (
           <article key={p.gid} className="rounded-2xl border-2 border-violet-200 bg-white p-4 space-y-3">
             <header className="flex justify-between gap-2 flex-wrap">
               <div>
-                <h3 className="font-black text-violet-950">🏢 {p.ministryName || p.groupName || '부처'} — {f.title || '집행계획명 미입력'}</h3>
+                <h3 className="font-black text-violet-950">{isPresident ? '👑' : '🏢'} {p.ministryName || p.groupName || '부처'} — {f.title || '집행계획명 미입력'}</h3>
                 <p className="text-xs text-slate-500">청구 예산 {requested}억 · 초안 {p.draftBudget || 0}억</p>
               </div>
               <span className={`rounded-full px-3 py-1 text-[11px] font-black ${isSavedOnly ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -268,6 +277,19 @@ function ExecutivePolicyDiscussionList() {
                 </div>
               )}
             </div>
+            {isPresident && directiveList.length > 0 && (
+              <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 space-y-1.5">
+                <p className="text-xs font-black text-amber-900">📋 대통령실 → 부처별 업무지시</p>
+                <ul className="space-y-1">
+                  {directiveList.map((d, idx) => (
+                    <li key={idx} className="text-xs text-amber-900 whitespace-pre-wrap">
+                      <b>🏛️ {d.ministryName || '부처'}</b>: {d.text}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-amber-700">각 부처는 위 지시를 참고해 시행령·예산에 반영하거나 아래에 의견을 남기세요.</p>
+              </div>
+            )}
             {isSavedOnly ? (
               (() => {
                 const myGroup = groups?.[myGroupId]

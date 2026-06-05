@@ -1102,6 +1102,8 @@ export default function BranchUnitWorkspace({
       groups?.[unitGroupId]?.name?.includes('대통령')
     ))
   )
+  // 대통령실 대표 호칭은 '장관'이 아니라 '비서실장'
+  const repLabel = isPresidentUnit ? '비서실장' : '장관'
 
   if (isExecutiveRoleMode) {
     const renderExecutiveRoleBoard = () => (
@@ -1496,7 +1498,7 @@ export default function BranchUnitWorkspace({
                 )
               ) : (
                 renderCustomFinalViewer ? (
-                  renderCustomFinalViewer(mergedFinalDoc)
+                  renderCustomFinalViewer(mergedFinalDoc, { repLabel })
                 ) : (
                   <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
                     {mergedFinalDoc?.content?.mergedBody || '(내용 없음)'}
@@ -1510,7 +1512,7 @@ export default function BranchUnitWorkspace({
                   <h3 className="text-sm font-bold text-gray-700">✅ 대표 최종 검토</h3>
                   {!isLocked && (
                     <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 animate-pulse font-bold">
-                      ✍️ 장관 검토 중 (실시간)
+                      ✍️ {repLabel} 검토 중 (실시간)
                     </span>
                   )}
                 </div>
@@ -1518,11 +1520,11 @@ export default function BranchUnitWorkspace({
                   {!isLocked && (
                     <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-amber-850 text-xs font-semibold leading-relaxed">
                       <span>👑</span>
-                      <p>장관이 모둠원들의 초안을 취합하여 최종안을 수정하고 있습니다. 장관이 내용을 변경하고 저장하면 아래에 실시간으로 반영됩니다.</p>
+                      <p>{repLabel}이 모둠원들의 초안을 취합하여 최종안을 수정하고 있습니다. {repLabel}이 내용을 변경하고 저장하면 아래에 실시간으로 반영됩니다.</p>
                     </div>
                   )}
                   {renderCustomFinalViewer ? (
-                    renderCustomFinalViewer(mergedFinalDoc)
+                    renderCustomFinalViewer(mergedFinalDoc, { repLabel })
                   ) : (
                     <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {mergedFinalDoc?.content?.mergedBody || '(내용 없음)'}
@@ -2214,7 +2216,7 @@ export default function BranchUnitWorkspace({
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
                 <p className="text-xs font-bold text-gray-600">✅ 최종 {docLabel}</p>
                 {renderCustomFinalViewer ? (
-                  renderCustomFinalViewer(mergedFinalDoc)
+                  renderCustomFinalViewer(mergedFinalDoc, { repLabel })
                 ) : (
                   <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed min-h-[60px]">
                     {mergedFinalDoc?.content?.mergedBody || <span className="italic text-gray-400">아직 작성되지 않았습니다.</span>}
@@ -2303,7 +2305,7 @@ export default function BranchUnitWorkspace({
                   )}
                 </div>
                 {renderCustomFinalViewer ? (
-                  renderCustomFinalViewer(mergedFinalDoc)
+                  renderCustomFinalViewer(mergedFinalDoc, { repLabel })
                 ) : (
                   <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
                     {mergedFinalDoc?.content?.mergedBody || '(내용 없음)'}

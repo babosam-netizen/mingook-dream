@@ -6,6 +6,13 @@
 
 ---
 
+## v1.3.4 (2026-06-06) [Claude] — 대통령실 개편 후속 4건 (국무회의 대본 노출·업무지시 게시·호칭·제출물 열람)
+- #1 신규 `CabinetScriptBox`: 국무회의 다자토론에서 대통령실 모둠 타이머 밑에 진행 대본(branchDrafts/exe-president/cabinetScript) 읽기전용 노출(`DebateToolPanel`).
+- #2 `ExecutivePolicyDiscussionList`가 `branchDrafts/exe-president/directives` 구독 → 대통령실 정책 카드에 "부처별 업무지시" 블록(부처가 반응 가능).
+- #3 대통령실 대표 호칭 '장관'→'비서실장'(`BranchUnitWorkspace` repLabel, `ExecutiveFinalViewer` repLabel prop).
+- #4 `SubmissionMonitor`: 토론 주제(세션)별 보조 필터 + 토론 준비카드 4개 양식 항목 전체 표시(빈칸은 (빈칸)).
+- `npm run build` 통과. `APP_BUILD` v1.3.4.
+
 ## v1.3.3 (2026-06-05) [Claude] — 대통령실 개편 증분 2~4: 공약 선택·부처 업무지시·국무회의 대본·예산 예약분
 - 제안서: `docs/proposal_president_pledge_decree_2026-06-05.md` (rev1).
 - 신규 `PresidentControlPanel.jsx`: ① 공약 선택(candidates.pledges 중 1개 + 법령 연결 한 줄) ② 부처별 업무지시(executive.units 자동 나열) ③ 국무회의 대본 자동생성·공동수정. 저장 `branchDrafts/exe-president/{selectedPledge|directives|cabinetScript}`.

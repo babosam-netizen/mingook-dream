@@ -6,6 +6,7 @@ import { updateAt, subscribe, pushUnder, getOnce, setAt } from '../../lib/rtdb-h
 import StancePoll from './tools/StancePoll'
 import DebatePrepCard from './tools/DebatePrepCard'
 import DebateTimer, { computeRemaining, getRoundInfo } from './tools/DebateTimer'
+import CabinetScriptBox from './CabinetScriptBox'
 import SpeechEval, { aggregateEval, MiniRadar, EVAL_AXES } from './tools/SpeechEval'
 import DebateScriptEditor from './tools/DebateScriptEditor'
 import DebateScriptPrompter from './tools/DebateScriptPrompter'
@@ -1078,6 +1079,9 @@ const lastSessionIdRef = useRef(null)
                         roundInfo={timerRoundInfo}
                       />
                       <DebateTimer timer={timer} topic={session.topic} />
+
+                      {/* 국무회의: 대통령실 모둠 타이머 밑에 진행 대본 노출 */}
+                      <CabinetScriptBox session={session} />
 
                       {isVerdictTrialSession && myStudentId && (
                         <VerdictTrialMemo

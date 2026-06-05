@@ -4,6 +4,7 @@ import ExecutivePolicyBudgetDraft, {
   ExecutiveFinalAssembler,
   ExecutiveFinalViewer,
   ExecutiveSectionBudgetManager,
+  ExecutiveStatsReference,
 } from './ExecutivePolicyBudgetDraft'
 import ExecutivePolicyDiscussionList from './ExecutivePolicyDiscussionList'
 import ExecutiveCabinetPanel from './ExecutiveCabinetPanel'
@@ -12,30 +13,343 @@ import ExecutiveBudgetReviewBoard from './ExecutiveBudgetReviewBoard'
 import OtherGroupsRoleSummary from '../scaffolding/OtherGroupsRoleSummary'
 import HighlightBox from '../shared/HighlightBox'
 import useGameStore from '../../store/gameStore'
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import { subscribe, setAt } from '../../lib/rtdb-helpers'
 import { useWorkflow } from '../../lib/use-workflow'
 import ExecutiveProgressGuide from './ExecutiveProgressGuide'
 import BranchUnitBanner from './BranchUnitBanner'
 import BranchUnitWorkspace from './BranchUnitWorkspace'
 import ResearchWorkspace from '../research/ResearchWorkspace'
+import { DEFAULT_ROLES, normalizeTodo } from '../../lib/scaffolding-data'
 
 const SESSION_ID = 'executive-default' // Phase3Page 와 동일 키
-// 행정부 단계 step id (마지막 article2 는 Phase3Page 의 ArticleSection 영역에서 처리)
+// 행정부 단계 step id
 const KNOWN_EXEC_STEPS = new Set([
   'executive-roles',
   'executive-budget',
   'executive-review',
   'executive-discuss',
-  // 옛 데이터 호환을 위해 briefing/request 는 남겨두되 새 진행 순서에는 노출하지 않는다.
   'executive-briefing',
   'executive-request',
   'executive-meeting',
   'executive-adjust',
   'executive-final',
-  // 옛 방 데이터가 이미 종료 stepIndex를 가리키는 경우 발표 화면으로 흡수한다.
   'executive-end',
 ])
+
+const PRESIDENT_ROLES = DEFAULT_ROLES.executive_president || []
+const PRES_SESSION = 'executive-default'
+
+/**
+ * 대통령실 전용 워크스페이스
+ * BranchUnitWorkspace에 의존하지 않고 독립적으로 역할 선택 + 임무 수행 + 저장 지원
+ */
+function PresidentWorkspace({ groupId, countryName }) {
+  const roomCode = useGameStore((s) => s.roomCode)
+  const myStudentId = useGameStore((s) => s.myStudentId)
+  const role = useGameStore((s) => s.role)
+  const groups = useGameStore((s) => s.groups)
+  const students = useGameStore((s) => s.students)
+  const config = useGameStore((s) => s.config)
+
+  const rolesLocked = Boolean(config?.branchRolesLocked?.executive)
+
+  // 세션 역할 맵
+  const sessionRoleMap = useMemo(
+    () => groups?.[groupId]?.sessionRoles?.[PRES_SESSION] || {},
+    [groups, groupId]
+  )
+
+  // 내 역할
+  const myRoleKey = useMemo(
+    () => (myStudentId ? sessionRoleMap[myStudentId] || null : null),
+    [sessionRoleMap, myStudentId]
+  )
+  const myRoleMeta = useMemo(
+    () => PRESIDENT_ROLES.find((r) => r.key === myRoleKey) || null,
+    [myRoleKey]
+  )
+
+  // 역할 폰벣1 상태
+  const claimedBy = useMemo(() => {
+    const map = {}
+    for (const [sid, rk] of Object.entries(sessionRoleMap)) {
+      if (rk && PRESIDENT_ROLES.some((r) => r.key === rk)) map[rk] = sid
+    }
+    return map
+  }, [sessionRoleMap])
+
+  // QnA 상태
+  const [qnas, setQnas] = useState({})
+  const [linkInput, setLinkInput] = useState('')
+  const [links, setLinks] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const loaded = useRef(false)
+
+  // 멤버 노트 구독
+  const [memberNotes, setMemberNotes] = useState({})
+  useEffect(() => {
+    if (!roomCode || !groupId) return
+    const u = subscribe(roomCode, `branchDrafts/exe-president/memberNotes`, (d) => setMemberNotes(d || {}))
+    return () => u?.()
+  }, [roomCode, groupId])
+
+  // 내 노트 로드
+  useEffect(() => {
+    if (!loaded.current && myStudentId && memberNotes[myStudentId]) {
+      const note = memberNotes[myStudentId]
+      if (note.qna) setQnas(note.qna)
+      if (Array.isArray(note.links)) setLinks(note.links)
+      loaded.current = true
+    }
+  }, [memberNotes, myStudentId])
+
+  const handleQna = useCallback((idx, val) => {
+    setQnas((prev) => ({ ...prev, [idx]: val }))
+  }, [])
+
+  const claimRole = async (roleKey) => {
+    if (!roomCode || !groupId || !myStudentId || busy || rolesLocked) return
+    setBusy(true)
+    try {
+      await setAt(roomCode, `groups/${groupId}/sessionRoles/${PRES_SESSION}/${myStudentId}`, roleKey)
+    } finally { setBusy(false) }
+  }
+
+  const cancelRole = async () => {
+    if (!roomCode || !groupId || !myStudentId || busy || rolesLocked) return
+    setBusy(true)
+    try {
+      await setAt(roomCode, `groups/${groupId}/sessionRoles/${PRES_SESSION}/${myStudentId}`, null)
+    } finally { setBusy(false) }
+  }
+
+  const isValidUrl = (s) => { try { return Boolean(new URL(s)) } catch { return false } }
+
+  const addLink = async () => {
+    if (!isValidUrl(linkInput)) return
+    const newLinks = [...links, { url: linkInput, addedAt: Date.now() }]
+    setLinks(newLinks)
+    setLinkInput('')
+    if (roomCode && myStudentId) {
+      await setAt(roomCode, `branchDrafts/exe-president/memberNotes/${myStudentId}`, {
+        qna: qnas, links: newLinks, updatedAt: Date.now()
+      })
+    }
+  }
+
+  const removeLink = async (idx) => {
+    const newLinks = links.filter((_, i) => i !== idx)
+    setLinks(newLinks)
+    if (roomCode && myStudentId) {
+      await setAt(roomCode, `branchDrafts/exe-president/memberNotes/${myStudentId}`, {
+        qna: qnas, links: newLinks, updatedAt: Date.now()
+      })
+    }
+  }
+
+  const saveNote = async () => {
+    if (!roomCode || !myStudentId || !myRoleMeta) return
+    setSaving(true)
+    const text = myRoleMeta.memoGuide?.map((q, i) => `${q}\n→ ${qnas[i] || ''}`).join('\n\n') || ''
+    const now = Date.now()
+    await setAt(roomCode, `branchDrafts/exe-president/memberNotes/${myStudentId}`, {
+      text, qna: qnas, links,
+      updatedAt: now, submittedAt: now,
+    })
+    if (myRoleMeta.assignedSection) {
+      await setAt(roomCode, `branchDrafts/exe-president/sections/${myRoleMeta.assignedSection}`, {
+        content: { text, policyFields: { qna: qnas }, links },
+        authorRole: myRoleKey,
+        authorStudentId: myStudentId,
+        status: text.trim().length > 20 && links.length > 0 ? 'ready' : 'draft',
+        updatedAt: now,
+      })
+    }
+    setSaving(false)
+    alert('대통령실 임무가 저장되었습니다.')
+  }
+
+  // 대통령 모둥 소속 여부
+  const myGroupId = useMemo(() => {
+    if (!myStudentId) return null
+    for (const [gid, g] of Object.entries(groups || {})) {
+      if (g?.members?.[myStudentId]) return gid
+    }
+    return null
+  }, [groups, myStudentId])
+
+  const isMyGroup = myGroupId === groupId || role === 'teacher'
+
+  if (!isMyGroup) {
+    return (
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-500 text-center">
+        이 유닛은 다른 모둥의 작업 공간입니다.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 대통령실 안내 배너 */}
+      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 flex items-start gap-3">
+        <span className="text-2xl">👑</span>
+        <div>
+          <p className="font-black text-yellow-900 text-sm">대통령실 — 행정부 총괄 조정 업무</p>
+          <p className="text-xs text-yellow-800 mt-1">
+            대통령실은 일반 부처와 달리 시행령·예산 청구 대신 <b>국정 방향 수립, 국무회의 준비, 공약 이행 지시</b>를 담당합니다.
+            아래 역할을 배정하고 각자의 임무를 수행하세요.
+          </p>
+        </div>
+      </div>
+
+      {/* 역할 선택 보드 */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        {rolesLocked && (
+          <div className="flex items-center gap-2 bg-amber-50 border-b border-amber-200 p-3 text-amber-800 font-bold text-xs">
+            <span>🔒</span><p>선생님이 역할을 잊곳습니다. 역할 변경이 불가능합니다.</p>
+          </div>
+        )}
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2.5 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-yellow-900 flex items-center gap-2">👑 국정 역할 배정</h3>
+          <span className="text-[11px] text-yellow-700">나의 역할을 고른 후 임무를 수행하세요</span>
+        </div>
+        <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+          {PRESIDENT_ROLES.map((roleDef) => {
+            const isMine = myRoleKey === roleDef.key
+            const ownerSid = claimedBy[roleDef.key]
+            const ownerStudent = ownerSid ? students?.[ownerSid] : null
+            const isTaken = Boolean(ownerSid) && ownerSid !== myStudentId
+            return (
+              <div
+                key={roleDef.key}
+                className={`rounded-xl border-2 p-3 min-h-[130px] flex flex-col gap-2 transition ${
+                  isMine ? 'border-yellow-500 bg-yellow-50/40 shadow-sm'
+                  : isTaken ? 'border-gray-100 bg-gray-50 opacity-80'
+                  : 'border-gray-200 bg-white hover:border-yellow-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{roleDef.emoji}</span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{roleDef.label}</p>
+                      {roleDef.isRepresentative && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-semibold border border-yellow-200">대표</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {isMine ? (
+                      <button type="button" onClick={cancelRole} disabled={busy || rolesLocked}
+                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-red-200 text-red-500 bg-white hover:bg-red-50 disabled:opacity-40 transition">
+                        취소
+                      </button>
+                    ) : isTaken ? (
+                      <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded font-semibold">배정됨</span>
+                    ) : (
+                      <button type="button" onClick={() => claimRole(roleDef.key)} disabled={busy || rolesLocked || Boolean(myRoleKey)}
+                        className="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-yellow-600 text-white hover:bg-yellow-700 disabled:opacity-40 transition">
+                        나 맡을게요
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {roleDef.memoGuide?.[0] && (
+                  <p className="text-[10px] text-slate-500 leading-relaxed line-clamp-2">{roleDef.memoGuide[0]}</p>
+                )}
+                <div className="mt-auto">
+                  <span className="text-[10px] text-slate-400">담당자: </span>
+                  {ownerStudent ? (
+                    <span className={`text-[11px] font-bold ${isMine ? 'text-yellow-700' : 'text-slate-700'}`}>
+                      {ownerStudent.number}번 {ownerStudent.nickname} {isMine && '(나)'}
+                    </span>
+                  ) : <span className="text-[11px] text-slate-400 italic">미정</span>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 임무 수행 영역 */}
+      {myRoleMeta ? (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2.5 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-yellow-900">
+              🎯 {myRoleMeta.emoji} {myRoleMeta.label}의 임무 수행
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* 임무 안내 */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs space-y-1.5">
+              <p className="font-bold text-yellow-900">📌 할 일 목록</p>
+              {myRoleMeta.todos?.map((todo, i) => {
+                const t = normalizeTodo(todo)
+                return (
+                  <div key={i} className="text-[11px] text-slate-700">
+                    • <span className="font-semibold">{t.label}</span>{t.hint && <span className="text-gray-400"> ({t.hint})</span>}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* QnA 입력 */}
+            <div className="space-y-3 bg-slate-50 border rounded-xl p-3">
+              <p className="text-[11px] font-bold text-yellow-700">❓ 임무 미션 질문에 답하기</p>
+              {myRoleMeta.memoGuide?.map((q, idx) => (
+                <label key={idx} className="block space-y-1 text-left">
+                  <span className="text-xs font-bold text-slate-700">{q}</span>
+                  <textarea
+                    rows={3}
+                    className="w-full text-xs border border-gray-200 rounded p-2.5 resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400 bg-white"
+                    placeholder="여기에 답변을 작성하세요..."
+                    value={qnas[idx] || ''}
+                    onChange={(e) => handleQna(idx, e.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
+
+            {/* 출처 링크 */}
+            <div className="space-y-2 bg-slate-50 border rounded-xl p-3">
+              <p className="text-[11px] font-bold text-yellow-700">🔗 참고 자료 업로드 (1개 이상 필수)</p>
+              <div className="flex gap-2">
+                <input type="url" className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                  placeholder="URL 입력 (https://...)"
+                  value={linkInput}
+                  onChange={(e) => setLinkInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addLink()}
+                />
+                <button type="button" onClick={addLink} disabled={!isValidUrl(linkInput)}
+                  className="px-3 py-1 text-xs rounded bg-yellow-600 text-white disabled:opacity-40">주가</button>
+              </div>
+              {links.length === 0 && <p className="text-[10px] text-red-500">⚠️ 출처 링크를 1개 이상 추가해야 저장이 가능합니다.</p>}
+              {links.map((l, i) => (
+                <div key={i} className="flex items-center gap-1 text-xs text-blue-600">
+                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate hover:underline">🔗 {l.url}</a>
+                  <button type="button" onClick={() => removeLink(i)} className="text-red-400 hover:text-red-600">✕</button>
+                </div>
+              ))}
+            </div>
+
+            {/* 저장 버튼 */}
+            <button type="button" onClick={saveNote}
+              disabled={saving || !Object.values(qnas).some(v => v?.trim()) || links.length === 0}
+              className="w-full py-2.5 text-sm font-bold rounded-lg bg-yellow-600 text-white hover:bg-yellow-700 disabled:opacity-40 transition">
+              {saving ? '저장 중…' : '💾 대통령실 임무 저장'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-xs text-yellow-900 text-center">
+          👑 위 <b>역할 배정</b>에서 내 역할을 먼저 선택해야 임무 수행 폼이 나타납니다.
+        </div>
+      )}
+    </div>
+  )
+}
 
 function buildBillBodyText(bill) {
   if (!bill) return ''
@@ -113,8 +427,27 @@ function ExecutiveTab({ previewMode = false }) {
   const myStudentId = useGameStore((s) => s.myStudentId)
   const groups = useGameStore((s) => s.groups)
   const roomCode = useGameStore((s) => s.roomCode)
-  const branchConfig = useGameStore((s) => s.config?.branchConfig)
-  const exeUnits = branchConfig?.executive?.units || []
+  const config = useGameStore((s) => s.config)
+  const className = useGameStore((s) => s.className)
+  const branchConfig = config?.branchConfig
+  const countryName = branchConfig?.executive?.countryName || config?.countryName || className || '축소국'
+  const exeUnits = useMemo(() => {
+    const units = [...(branchConfig?.executive?.units || [])]
+    const pGid = branchConfig?.executive?.presidentGroupId
+    if (pGid) {
+      const hasPresidentUnit = units.some((u) => u.groupId === pGid)
+      if (!hasPresidentUnit) {
+        units.push({
+          unitId: 'exe-president',
+          groupId: pGid,
+          ministryName: branchConfig?.executive?.presidentMinistryName || '대통령실',
+          title: branchConfig?.executive?.presidentMinistryName || '대통령실',
+          representativeStudentId: null
+        })
+      }
+    }
+    return units
+  }, [branchConfig])
   const isCollaborativeExecutive = branchConfig?.executive?.mode === 'collaborative'
   const wf = useWorkflow()
   const stepId = wf.currentStep?.id
@@ -192,12 +525,34 @@ function ExecutiveTab({ previewMode = false }) {
 
   const draftUnits = useMemo(() => {
     if (previewMode || exeUnits.length === 0) return []
-    if (role === 'teacher') return exeUnits
-    if (role === 'student' && myGroupId && (isRoleStep || isBudgetStep)) {
+    const pGid = branchConfig?.executive?.presidentGroupId
+    if (role === 'teacher') {
+      if (isCollaborativeExecutive && pGid) {
+        return exeUnits.filter((unit) => unit.groupId !== pGid)
+      }
+      return exeUnits
+    }
+    if (role === 'student' && myGroupId) {
+      if (isCollaborativeExecutive && pGid && myGroupId === pGid) {
+        return []
+      }
       return exeUnits.filter((unit) => unit.groupId === myGroupId)
     }
     return []
-  }, [previewMode, exeUnits, role, myGroupId, isRoleStep, isBudgetStep])
+  }, [previewMode, exeUnits, role, myGroupId, isCollaborativeExecutive, branchConfig])
+
+  const isPresidentGroup = myGroupId && (
+    branchConfig?.executive?.presidentGroupId === myGroupId ||
+    groups?.[myGroupId]?.name?.includes('대통령')
+  )
+
+  const researchTargets = isPresidentGroup
+    ? ['대통령 공약 및 국정과제', '부처별 정책 쟁점 및 갈등', '정부 예산 배정 현황', '시민 여론 및 소통 사례']
+    : ['필요한 예산·물가 정보', '예상되는 반대 의견', '과거 정책 실패 사례', '행정 인력·시간 계산']
+
+  const researchDescription = isPresidentGroup
+    ? "대통령실로서 우리 정부의 핵심 공약을 실현하고 각 부처의 예산/정책 쟁점을 조율하기 위한 자료를 수집하세요."
+    : "가결 법령을 실제로 집행하기 위해 필요한 자료 목록을 정하고, 정책·예산 근거가 될 기사 자료를 수집하세요."
 
   return (
     <div className="space-y-4">
@@ -224,8 +579,8 @@ function ExecutiveTab({ previewMode = false }) {
                 contextKey="phase3_executive"
                 groupId={myGroupId}
                 title="집행계획 근거 자료실"
-                description="가결 법령을 실제로 집행하기 위해 필요한 자료 목록을 정하고, 정책·예산 근거가 될 기사 자료를 수집하세요."
-                defaultTargets={['필요한 예산·물가 정보', '예상되는 반대 의견', '과거 정책 실패 사례', '행정 인력·시간 계산']}
+                description={researchDescription}
+                defaultTargets={researchTargets}
                 accent="amber"
               />
             </div>
@@ -329,86 +684,115 @@ function ExecutiveTab({ previewMode = false }) {
 
             {draftUnits.length > 0 ? (
               <div className="space-y-4">
-                {draftUnits.map((unit) => (
-                  <div key={unit.unitId} className="border-2 border-amber-200 rounded-2xl overflow-hidden bg-white">
-                    <div className="bg-amber-100 px-4 py-2 flex items-center gap-2">
-                      <span className="text-sm font-bold text-amber-800">
-                        🇰🇷 {unit.ministryName || groups?.[unit.groupId]?.name || unit.groupId}
-                        {!isCollaborativeExecutive && (
-                          <span className="ml-2 text-amber-600 font-normal text-xs">장관: {unit.representativeStudentId || '미지정'}</span>
-                        )}
-                      </span>
-                      {isCollaborativeExecutive && (
-                        <span className="ml-auto rounded-full bg-violet-100 px-2 py-1 text-[10px] font-black text-violet-700">
-                          공동작업 템플릿
+                {draftUnits.map((unit) => {
+                  // 대통령실 유닛 판별: 학급설정에서 대통령 모둠을 지정하면 unitId는
+                  // genUnitId('exe')(예: exe-a1b2c3)로 저장되므로 'exe-president' 리터럴만
+                  // 비교하면 인식되지 않는다. presidentGroupId·모둠명으로도 함께 판별한다.
+                  const pGid = branchConfig?.executive?.presidentGroupId
+                  const isPresidentUnit =
+                    unit.unitId === 'exe-president' ||
+                    (pGid && unit.groupId === pGid) ||
+                    Boolean(groups?.[unit.groupId]?.name?.includes('대통령'))
+                  return (
+                    <div key={unit.unitId} className={`border-2 rounded-2xl overflow-hidden bg-white ${
+                      isPresidentUnit ? 'border-yellow-300' : 'border-amber-200'
+                    }`}>
+                      <div className={`px-4 py-2 flex items-center gap-2 ${
+                        isPresidentUnit ? 'bg-yellow-100' : 'bg-amber-100'
+                      }`}>
+                        <span className="text-sm font-bold text-amber-800">
+                          {isPresidentUnit ? '👑' : '🇰🇷'} {unit.ministryName || groups?.[unit.groupId]?.name || unit.groupId}
+                          {!isPresidentUnit && !isCollaborativeExecutive && (
+                            <span className="ml-2 text-amber-600 font-normal text-xs">장관: {unit.representativeStudentId || '미지정'}</span>
+                          )}
+                          {isPresidentUnit && (
+                            <span className="ml-2 text-yellow-700 font-normal text-xs">대통령실 — 행정부 총괄</span>
+                          )}
                         </span>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <BranchUnitWorkspace
-                        unitId={unit.unitId}
-                        branch="executive"
-                        isCollaborative={isCollaborativeExecutive}
-                        renderCustomSectionEditor={(key, sec, onSave, saving, myNote, roleDef) => (
-                          <ExecutiveSectionEditor
-                            sectionKey={key}
-                            sec={sec}
-                            onSave={onSave}
-                            saving={saving}
-                            groupId={unit.groupId}
-                            passedBills={passedBills}
-                            myNote={myNote}
-                            roleDef={roleDef}
-                          />
+                        {isCollaborativeExecutive && !isPresidentUnit && (
+                          <span className="ml-auto rounded-full bg-violet-100 px-2 py-1 text-[10px] font-black text-violet-700">
+                            공동작업 템플릿
+                          </span>
                         )}
-                        renderCustomSectionViewer={(key, sec) => (
-                          <ExecutiveSectionViewer sectionKey={key} sec={sec} />
-                        )}
-                        renderCustomFinalEditor={(sections, finalDoc, onSaveDraft, saving, onPublishSubmit, allSectionsDone) => (
-                          <ExecutiveFinalAssembler
-                            sections={sections}
-                            finalDoc={finalDoc}
-                            onSaveDraft={onSaveDraft}
-                            saving={saving}
-                            onPublishSubmit={onPublishSubmit}
-                            allSectionsDone={allSectionsDone}
-                            groupId={unit.groupId}
+                      </div>
+                      <div className="p-4">
+                        {isPresidentUnit ? (
+                          <PresidentWorkspace groupId={unit.groupId} countryName={countryName} />
+                        ) : (
+                          <BranchUnitWorkspace
+                            unitId={unit.unitId}
+                            branch="executive"
                             isCollaborative={isCollaborativeExecutive}
-                          />
+                            renderCustomSectionEditor={(key, sec, onSave, saving, myNote, roleDef) => (
+                              <ExecutiveSectionEditor
+                                sectionKey={key}
+                                sec={sec}
+                                onSave={onSave}
+                                saving={saving}
+                                groupId={unit.groupId}
+                                passedBills={passedBills}
+                                myNote={myNote}
+                                roleDef={roleDef}
+                              />
+                            )}
+                            renderCustomSectionViewer={(key, sec) => (
+                              <ExecutiveSectionViewer sectionKey={key} sec={sec} />
+                            )}
+                            renderCustomFinalEditor={(sections, finalDoc, onSaveDraft, saving, onPublishSubmit, allSectionsDone) => (
+                              <ExecutiveFinalAssembler
+                                sections={sections}
+                                finalDoc={finalDoc}
+                                onSaveDraft={onSaveDraft}
+                                saving={saving}
+                                onPublishSubmit={onPublishSubmit}
+                                allSectionsDone={allSectionsDone}
+                                groupId={unit.groupId}
+                                isCollaborative={isCollaborativeExecutive}
+                              />
+                            )}
+                            renderCustomFinalViewer={(finalDoc, viewerOptions = {}) => (
+                              <ExecutiveFinalViewer finalDoc={finalDoc} {...viewerOptions} />
+                            )}
+                            renderCustomBudgetManager={(budgetItems, setBudgetItems, gId, sectionKey, suggestions) => (
+                              <>
+                                <ExecutiveStatsReference countryName={countryName} />
+                                <ExecutiveSectionBudgetManager
+                                  budgetItems={budgetItems}
+                                  setBudgetItems={setBudgetItems}
+                                  groupId={gId}
+                                  suggestions={suggestions}
+                                />
+                              </>
+                            )}
+                            onPublish={async (publishedData) => {
+                              if (!roomCode) return
+                              await setAt(roomCode, `policies/${unit.groupId}`, {
+                                ministryName: unit.ministryName || '',
+                                groupId: unit.groupId,
+                                authorStudentId: unit.representativeStudentId,
+                                status: 'submitted',
+                                branchUnitId: unit.unitId,
+                                submittedAt: Date.now(),
+                                ...publishedData,
+                              })
+                            }}
+                          >
+                            <ExecutivePolicyBudgetDraft groupId={unit.groupId} />
+                          </BranchUnitWorkspace>
                         )}
-                        renderCustomFinalViewer={(finalDoc, viewerOptions = {}) => (
-                          <ExecutiveFinalViewer finalDoc={finalDoc} {...viewerOptions} />
-                        )}
-                        renderCustomBudgetManager={(budgetItems, setBudgetItems, gId, sectionKey, suggestions) => (
-                          <ExecutiveSectionBudgetManager
-                            budgetItems={budgetItems}
-                            setBudgetItems={setBudgetItems}
-                            groupId={gId}
-                            suggestions={suggestions}
-                          />
-                        )}
-                        onPublish={async (publishedData) => {
-                          if (!roomCode) return
-                          await setAt(roomCode, `policies/${unit.groupId}`, {
-                            ministryName: unit.ministryName || '',
-                            groupId: unit.groupId,
-                            authorStudentId: unit.representativeStudentId,
-                            status: 'submitted',
-                            branchUnitId: unit.unitId,
-                            submittedAt: Date.now(),
-                            ...publishedData,
-                          })
-                        }}
-                      >
-                        <ExecutivePolicyBudgetDraft groupId={unit.groupId} />
-                      </BranchUnitWorkspace>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : previewMode ? (
               <div className="bg-white border border-violet-200 rounded-xl p-4 text-xs text-gray-600">
                 👩‍🏫 학생 화면에서는 장관(또는 모둠원)이 예산편성과 시행령을 작성합니다.
+              </div>
+            ) : isPresidentGroup && isCollaborativeExecutive ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+                👑 <b>대통령실 모둠 안내</b>: 공동작업 모드에서는 별도의 부처 시행령/예산안 초안을 작성하지 않습니다. 
+                위의 <b>자료실</b>에서 국정과제 자료를 조사하며, 다른 부처의 초안 작성을 대기하거나 국무회의를 준비해 주세요.
               </div>
             ) : (
               <p className="text-sm text-gray-500">모둠 가입이 필요해요.</p>

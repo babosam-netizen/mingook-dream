@@ -947,6 +947,10 @@ export function ExecutiveSectionBudgetManager({
 // 2단계: 개별 역할별 임무 완수 에디터 (통합형)
 // ────────────────────────────────────────────────────────────────────────
 export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, saving, groupId, passedBills, myNote }) {
+  const config = useGameStore((s) => s.config)
+  const className = useGameStore((s) => s.className)
+  const countryName = config?.branchConfig?.executive?.countryName || config?.countryName || className || '축소국'
+
   const [fields, setFields] = useState(() => sec?.content?.policyFields || {
     title: '', problem: '', purpose: '', targetCitizens: '',
     ordinance: '', content: '',
@@ -1113,6 +1117,7 @@ export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, savin
       {/* 3. 할당된 예산 편성 */}
       <div className="bg-white p-3 border border-emerald-200 rounded-xl space-y-3">
         <h4 className="text-sm font-black text-emerald-900 border-b border-emerald-100 pb-1 text-left">💰 실행 예산 편성</h4>
+        <ExecutiveStatsReference countryName={countryName} />
         <ExecutiveSectionBudgetManager
           budgetItems={budgetItems}
           setBudgetItems={setBudgetItems}
@@ -1209,6 +1214,7 @@ export function ExecutiveFinalAssembler({
   const [isEditing, setIsEditing] = useState(false)
   const roomCode = useGameStore((s) => s.roomCode)
   const config = useGameStore((s) => s.config)
+  const groups = useGameStore((s) => s.groups)
   const className = useGameStore((s) => s.className)
   const countryName = config?.branchConfig?.executive?.countryName || config?.countryName || className || '축소국'
 
@@ -1267,43 +1273,78 @@ export function ExecutiveFinalAssembler({
     }
 
     if (!isCollaborative) {
-      // ── 역할 중심 모드: 각 역할의 조항 초안을 제1조~제5조 순서로 조립 ──
-      const skel = sections?.skeleton?.content?.policyFields || {}
-      const dec  = sections?.decree?.content?.policyFields  || {}
-      const evid = sections?.evidence?.content?.policyFields || {}
-      const eff  = sections?.effect?.content?.policyFields  || {}
+      const isPresidentGroup = config?.branchConfig?.executive?.presidentGroupId === groupId || groups?.[groupId]?.name?.includes('대통령')
 
-      // 정책명 (목적·대상 설계원이 작성)
-      if (skel.title) allFields.title = skel.title
+      if (isPresidentGroup) {
+        // ── 대통령 모둠: 대통령실 전용 역할의 초안을 조립 ──
+        const mod = sections?.cabinet_moderator?.content?.policyFields || {}
+        const supp = sections?.president_support?.content?.policyFields || {}
+        const disc = sections?.discussion_summary?.content?.policyFields || {}
+        const econ = sections?.economic_feasibility?.content?.policyFields || {}
 
-      // 제1조~제5조 텍스트 조립
-      const articleParts = []
-      if (skel.purpose || skel.problem) {
-        articleParts.push(`제1조 (목적)\n${[skel.purpose, skel.problem].filter(Boolean).join('\n')}`)
-      }
-      if (skel.targetCitizens) {
-        articleParts.push(`제2조 (대상·범위)\n${skel.targetCitizens}`)
-      }
-      if (dec.content) {
-        articleParts.push(`제3조 (시행 절차)\n${dec.content}`)
-      }
-      if (evid.evidence) {
-        articleParts.push(`제4조 (지원 내용·재원)\n${evid.evidence}`)
-      }
-      const effText = [eff.expectedEffect, eff.discussionReflection].filter(Boolean).join('\n')
-      if (effText) {
-        articleParts.push(`제5조 (점검·보완)\n${effText}`)
-      }
-      // 조항이 1개 이상 있으면 항상 덮어쓰기 (최신 초안 반영)
-      if (articleParts.length > 0) {
-        allFields.ordinance = articleParts.join('\n\n')
-      }
+        if (mod.title) allFields.title = mod.title
 
-      // 보조 필드 (비어 있을 때만 채움)
-      if (skel.problem && !allFields.evidence) allFields.evidence = skel.problem
-      if (evid.publicConcern && !allFields.publicConcern) allFields.publicConcern = evid.publicConcern
-      if (evid.publicResponse && !allFields.publicResponse) allFields.publicResponse = evid.publicResponse
-      if (eff.expectedEffect && !allFields.expectedEffect) allFields.expectedEffect = eff.expectedEffect
+        const articleParts = []
+        if (mod.purpose || mod.problem) {
+          articleParts.push(`[국무회의 심의 및 최종 예산안 조율]\n${[mod.purpose, mod.problem].filter(Boolean).join('\n')}`)
+        }
+        if (supp.content) {
+          articleParts.push(`[대통령 보좌 및 국정 현안 요약]\n${supp.content}`)
+        }
+        if (disc.publicConcern || disc.publicResponse || disc.finalMessage) {
+          articleParts.push(`[여론 소통 및 정책토의 피드백 분석]\n${[disc.publicConcern, disc.publicResponse, disc.finalMessage].filter(Boolean).join('\n')}`)
+        }
+        if (econ.evidence || econ.expectedEffect || econ.finalScale) {
+          articleParts.push(`[정부 재정 분석 및 예산 타당성 평가]\n${[econ.evidence, econ.expectedEffect, econ.finalScale].filter(Boolean).join('\n')}`)
+        }
+
+        if (articleParts.length > 0) {
+          allFields.ordinance = articleParts.join('\n\n')
+        }
+
+        if (mod.problem && !allFields.evidence) allFields.evidence = mod.problem
+        if (disc.publicConcern && !allFields.publicConcern) allFields.publicConcern = disc.publicConcern
+        if (disc.publicResponse && !allFields.publicResponse) allFields.publicResponse = disc.publicResponse
+        if (econ.expectedEffect && !allFields.expectedEffect) allFields.expectedEffect = econ.expectedEffect
+      } else {
+        // ── 일반 부처 역할 중심 모드: 각 역할의 조항 초안을 제1조~제5조 순서로 조립 ──
+        const skel = sections?.skeleton?.content?.policyFields || {}
+        const dec  = sections?.decree?.content?.policyFields  || {}
+        const evid = sections?.evidence?.content?.policyFields || {}
+        const eff  = sections?.effect?.content?.policyFields  || {}
+
+        // 정책명 (목적·대상 설계원이 작성)
+        if (skel.title) allFields.title = skel.title
+
+        // 제1조~제5조 텍스트 조립
+        const articleParts = []
+        if (skel.purpose || skel.problem) {
+          articleParts.push(`제1조 (목적)\n${[skel.purpose, skel.problem].filter(Boolean).join('\n')}`)
+        }
+        if (skel.targetCitizens) {
+          articleParts.push(`제2조 (대상·범위)\n${skel.targetCitizens}`)
+        }
+        if (dec.content) {
+          articleParts.push(`제3조 (시행 절차)\n${dec.content}`)
+        }
+        if (evid.evidence) {
+          articleParts.push(`제4조 (지원 내용·재원)\n${evid.evidence}`)
+        }
+        const effText = [eff.expectedEffect, eff.discussionReflection].filter(Boolean).join('\n')
+        if (effText) {
+          articleParts.push(`제5조 (점검·보완)\n${effText}`)
+        }
+        // 조항이 1개 이상 있으면 항상 덮어쓰기 (최신 초안 반영)
+        if (articleParts.length > 0) {
+          allFields.ordinance = articleParts.join('\n\n')
+        }
+
+        // 보조 필드 (비어 있을 때만 채움)
+        if (skel.problem && !allFields.evidence) allFields.evidence = skel.problem
+        if (evid.publicConcern && !allFields.publicConcern) allFields.publicConcern = evid.publicConcern
+        if (evid.publicResponse && !allFields.publicResponse) allFields.publicResponse = evid.publicResponse
+        if (eff.expectedEffect && !allFields.expectedEffect) allFields.expectedEffect = eff.expectedEffect
+      }
     } else {
       // ── 공동작업 모드: 구버전 호환 — 최종 병합 문서가 없을 때만 섹션 필드를 보조로 읽는다 ──
       if (!Object.values(allFields).some((value) => typeof value === 'string' && value.trim())) {

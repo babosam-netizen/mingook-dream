@@ -43,16 +43,16 @@ export const PHASE_STEPS = {
     { id: 'legislative-vote',     session: '12차시',  label: '  └ 입법 ⑤ 표결',                    hint: '⬇️ 빠른 제어의 [🎬 전광판 띄우기] → 학생 표결 → 다음 단계로 진행',                            highlight: 'legislative', studentLabel: '입법 ⑤ 표결',                         stage: 4 },
     { id: 'legislative-announce', session: '12차시',  label: '  └ 입법 ⑥ 발표',                    hint: '표결 결과와 의결 종료 법안을 함께 확인합니다.',           highlight: 'legislative', studentLabel: '입법 ⑥ 발표',                    stage: 5 },
     { id: 'article1',    session: '12차시',     label: '기사 작성 — 입법 결과를 기사로',            hint: '작성 후 교사 승인 → 여론판 게시',          highlight: 'article',     studentLabel: '기사 작성 (입법부 활동)' },
-    { id: 'poll2',       session: '12차시',     label: '사전 여론조사 3-1 — 입법 결과에 대한 시민 반응', hint: '여론조사 메뉴에서 실시',                    highlight: 'poll',        studentLabel: '사전 여론조사 3-1', showSummary: true },
+    { id: 'poll2',       session: '12차시',     label: '사후 여론조사 3-1 — 입법 결과에 대한 시민 반응', hint: '여론조사 메뉴에서 실시',                    highlight: 'poll',        studentLabel: '사후 여론조사 3-1', showSummary: true },
     { id: 'executive-roles',    session: '13차시',     label: '행정 ① 준비',                         hint: '부처별 역할과 자료 수집 목록을 확인하고 집행계획 준비 자료를 모읍니다.',                  highlight: 'executive',   studentLabel: '행정 ① 준비',          stage: 0 },
     { id: 'executive-budget',   session: '13차시',     label: '  └ 행정 ② 정책 및 예산 초안',                  hint: '부처별 집행계획, 시행령 초안, 예산 항목 작성. 저장 시 평가단 열람 가능, 제출 시 공식 공개',                         highlight: 'executive',   studentLabel: '행정 ② 정책 및 예산 초안',          stage: 1 },
-    { id: 'executive-review',   session: '13차시',     label: '  └ 행정 ③ 예산 초안 검토',                  hint: '⬇️ 빠른 제어의 [🎬 전광판 띄우기] → 정부 총예산 대비 부처별 예산 청구액 방송 시청',                         highlight: 'executive',   studentLabel: '행정 ③ 예산 초안 검토',          stage: 2 },
+    { id: 'executive-review',   session: '13차시',     label: '  └ 행정 ③ 청구예산비교',                  hint: '⬇️ 빠른 제어의 [🎬 전광판 띄우기] → 정부 총예산 대비 부처별 예산 청구액 방송 시청',                         highlight: 'executive',   studentLabel: '행정 ③ 청구예산비교',          stage: 2 },
     { id: 'executive-discuss',  session: '14차시',     label: '  └ 행정 ④ 토의 및 평가',                hint: '다른 부처 집행계획·시행령·예산안에 찬성/반대/중립 의견과 3축 평가 작성',                                                  highlight: 'executive',   studentLabel: '행정 ④ 토의 및 평가',              stage: 3 },
     { id: 'executive-meeting',  session: '14차시',     label: '  └ 행정 ⑤ 다자간 토론(국무회의)',              hint: '평가단 브리핑 후 초과액/잔여액을 놓고 오프라인 국무회의 진행 및 여론조사 실시',                                     highlight: 'executive',   studentLabel: '행정 ⑤ 다자간 토론(국무회의)',                stage: 4 },
     { id: 'executive-adjust',   session: '15차시',     label: '  └ 행정 ⑥ 정책 및 예산안 최종 수정',                  hint: '토론 결과를 반영해 별도 수정 창에서 시행령과 최종 배정 예산안을 집중 수정',                                                  highlight: 'executive',   studentLabel: '행정 ⑥ 정책 및 예산안 최종 수정',                  stage: 5 },
     { id: 'executive-final',    session: '15차시',     label: '  └ 행정 ⑦ 최종 발표',                     hint: '부처별 최종 정책·배정 예산·조정 이유를 발표하고 행정부 활동을 정리합니다.',                                                                 highlight: 'executive',   studentLabel: '행정 ⑦ 최종 발표',             stage: 6 },
     { id: 'article2',           session: '15차시',     label: '기사 작성 — 행정 결과를 기사로', hint: '작성 후 교사 승인 → 여론판 게시',                                                                          highlight: 'article',     studentLabel: '기사 작성 (행정부 활동)' },
-    { id: 'poll3',       session: '15차시',     label: '사전 여론조사 3-2 — 예산 편성 평가',             hint: '여론조사 메뉴에서 실시',                    highlight: 'poll',        studentLabel: '사전 여론조사 3-2', showSummary: true },
+    { id: 'poll3',       session: '15차시',     label: '사후 여론조사 3-2 — 예산 편성 평가',             hint: '여론조사 메뉴에서 실시',                    highlight: 'poll',        studentLabel: '사후 여론조사 3-2', showSummary: true },
     // ──── 사법부 v3.2 — 7단계 (16~18차시) ────
     { id: 'judicial-prep',       session: '16차시', label: '사법 ① 준비 (사건 확인 + 역할 선택)',     hint: '사건 자료실에서 사건 배경·내용·증거를 읽고, 팀 배정 확인 + 모둠 내 역할을 선택합니다.', highlight: 'judicial', studentLabel: '사법 ① 사건 확인·역할 선택', stage: 0 },
     { id: 'judicial-research',   session: '16차시', label: '  └ 사법 ② 자료 조사',                   hint: '팀별로 판례·법조항·뉴스·통계 등 사건과 관련된 자료를 수집합니다.',           highlight: 'judicial', studentLabel: '사법 ② 자료 조사',          stage: 1 },
@@ -121,17 +121,17 @@ export const POLL_SLOTS = [
     useGroups: true,
   },
   { 
-    phase: 3, stepId: 'poll2', tag: '사전 여론조사 3-1', label: '세 번째 여정 · 사전 여론조사 3-1 (입법 결과 평가)',
+    phase: 3, stepId: 'poll2', tag: '사후 여론조사 3-1', label: '세 번째 여정 · 사후 여론조사 3-1 (입법 결과 평가)',
     question: '이번 입법부 활동에서 통과된 법안들이 우리 동네 문제를 해결하는 데 적절하다고 생각하나요?',
     options: ['매우 적절함', '적절함', '보통', '미흡함', '매우 미흡함']
   },
   { 
-    phase: 3, stepId: 'poll3', tag: '사전 여론조사 3-2', label: '세 번째 여정 · 사전 여론조사 3-2 (예산 편성 평가)',
+    phase: 3, stepId: 'poll3', tag: '사후 여론조사 3-2', label: '세 번째 여정 · 사후 여론조사 3-2 (예산 편성 평가)',
     question: '정부의 이번 예산 편성이 공평하고 효율적으로 이루어졌다고 생각하나요?',
     options: ['매우 잘됨', '잘됨', '보통', '미흡함', '매우 미흡함']
   },
   { 
-    phase: 3, stepId: 'poll4', tag: '사전 여론조사 3-3', label: '세 번째 여정 · 사전 여론조사 3-3 (판결 평가)',
+    phase: 3, stepId: 'poll4', tag: '사후 여론조사 3-3', label: '세 번째 여정 · 사후 여론조사 3-3 (판결 평가)',
     question: '이번 재판의 판결이 법과 원칙에 따라 공정하게 내려졌다고 생각하나요?',
     options: ['매우 공정함', '공정함', '보통', '불공정함', '매우 불공정함']
   },

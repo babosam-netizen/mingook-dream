@@ -81,6 +81,12 @@ function assignedGroupIds(bc, filterDepartment = null, excludePos = null) {
   addUnits(bc.judicial?.judge       || [], 'judicial', 'judge')
   addUnits(bc.judicial?.press       || [], 'judicial', 'press')
   addUnits(bc.judicial?.evaluators  || [], 'judicial', 'evaluators')
+
+  // 대통령 모둠 수집 추가 (일반 부처나 평가단 배정 셀렉트 시 중복 제외용)
+  if (bc.executive?.presidentGroupId && (!filterDepartment || filterDepartment === 'executive')) {
+    ids.add(bc.executive.presidentGroupId)
+  }
+
   return ids
 }
 
@@ -389,6 +395,39 @@ export default function BranchConfigEditor({ value, onChange }) {
     return ranks?.[0]?.groupId || null
   }, [candidatesRaw, votesRaw])
 
+  const hasInitializedPresident = useRef(false)
+  useEffect(() => {
+    const branch = bc.executive || {}
+    if (electionWinnerId && !branch.presidentGroupId && !hasInitializedPresident.current) {
+      hasInitializedPresident.current = true
+      const gid = electionWinnerId
+      const name = branch.presidentMinistryName || '대통령실'
+      let units = [...(branch.units || [])]
+      
+      const existingIdx = units.findIndex(u => u.groupId === gid)
+      if (existingIdx !== -1) {
+        units[existingIdx] = { ...units[existingIdx], ministryName: name, title: name }
+      } else {
+        units.push({
+          unitId: genUnitId('exe'),
+          groupId: gid,
+          ministryName: name,
+          title: name,
+          representativeStudentId: null
+        })
+      }
+
+      onChange({
+        ...bc,
+        executive: {
+          ...branch,
+          presidentGroupId: gid,
+          units
+        }
+      })
+    }
+  }, [electionWinnerId, bc, onChange])
+
   const groupList = useMemo(
     () => Object.entries(groups || {}).map(([id, g]) => ({ id, ...g })),
     [groups],
@@ -428,6 +467,28 @@ export default function BranchConfigEditor({ value, onChange }) {
     const excluded = assignedGroupIds(bc, department)
     return groupList.filter((g) => !excluded.has(g.id)).length
   }
+
+  const availablePresidentGroups = useMemo(() => {
+    const excluded = new Set()
+    const branch = bc.executive || {}
+    const units = branch.units || []
+
+    // 타 부서/유닛에 이미 지정된 모둠들 수집 (단, 현재 대통령실 모둠은 제외하지 않음)
+    units.forEach(u => {
+      if (u.groupId && u.groupId !== branch.presidentGroupId) {
+        excluded.add(u.groupId)
+      }
+    })
+
+    const otherIds = assignedGroupIds(bc)
+    otherIds.forEach(id => {
+      if (id !== branch.presidentGroupId) {
+        excluded.add(id)
+      }
+    })
+
+    return groupList.filter(g => !excluded.has(g.id))
+  }, [bc, groupList])
 
   function membersOf(groupId) {
     const g = groups?.[groupId]
@@ -476,11 +537,33 @@ export default function BranchConfigEditor({ value, onChange }) {
     if (!template) return
     const branch = bc.executive || {}
     const existingUnits = branch.units || []
+    
+    // 대통령실이 아닌 일반 부처 유닛만 기존 목록에서 추출하여 템플릿과 매핑
+    const nonPresidentUnits = existingUnits.filter(u => u.groupId !== branch.presidentGroupId)
+    
     const nextUnits = template.ministries.map((name, idx) => ({
-      ...(existingUnits[idx] || { unitId: genUnitId('exe'), groupId: '', representativeStudentId: null }),
+      ...(nonPresidentUnits[idx] || { unitId: genUnitId('exe'), groupId: '', representativeStudentId: null }),
       ministryName: name,
       title: name,
     }))
+
+    // 기존 설정된 대통령실 모둠이 있다면 삭제되지 않도록 보존/추가
+    if (branch.presidentGroupId) {
+      const presUnit = existingUnits.find(u => u.groupId === branch.presidentGroupId)
+      if (presUnit) {
+        nextUnits.push(presUnit)
+      } else {
+        const name = branch.presidentMinistryName || '대통령실'
+        nextUnits.push({
+          unitId: genUnitId('exe'),
+          groupId: branch.presidentGroupId,
+          ministryName: name,
+          title: name,
+          representativeStudentId: null
+        })
+      }
+    }
+
     onChange({
       ...bc,
       executive: {
@@ -604,24 +687,91 @@ export default function BranchConfigEditor({ value, onChange }) {
 
             {branchKey === 'executive' && (
               <div className="rounded-xl bg-white/80 border border-amber-200 p-3 space-y-3">
-                <div className="space-y-1 border-b border-amber-200 pb-3 mb-3">
+                <div className="space-y-1 border-b border-amber-200 pb-3 mb-3 text-left">
                   <span className="text-xs font-black text-amber-800 flex items-center gap-1">
                     👑 대통령 모둠 (국무회의 진행 및 최종 예산 결정)
                   </span>
                   <select
                     className="w-full text-xs border border-amber-300 bg-amber-50 rounded px-2 py-1.5 font-bold text-amber-900"
-                    value={branch.presidentGroupId ?? (electionWinnerId || '')}
-                    onChange={(e) => updateBranchSettings('executive', { presidentGroupId: e.target.value })}
+                    value={branch.presidentGroupId ?? ''}
+                    onChange={(e) => {
+                      const gid = e.target.value
+                      const prevGid = branch.presidentGroupId
+                      const name = branch.presidentMinistryName || '대통령실'
+                      let units = [...(branch.units || [])]
+
+                      if (gid) {
+                        const existingIdx = units.findIndex(u => u.groupId === gid)
+                        const prevIdx = prevGid ? units.findIndex(u => u.groupId === prevGid) : -1
+
+                        if (existingIdx !== -1) {
+                          units[existingIdx] = { ...units[existingIdx], ministryName: name, title: name }
+                        } else if (prevIdx !== -1) {
+                          units[prevIdx] = { ...units[prevIdx], groupId: gid, ministryName: name, title: name }
+                        } else {
+                          units.push({
+                            unitId: genUnitId('exe'),
+                            groupId: gid,
+                            ministryName: name,
+                            title: name,
+                            representativeStudentId: null
+                          })
+                        }
+                      } else {
+                        if (prevGid) {
+                          units = units.filter(u => u.groupId !== prevGid)
+                        }
+                      }
+
+                      onChange({
+                        ...bc,
+                        executive: {
+                          ...branch,
+                          presidentGroupId: gid || null,
+                          units
+                        }
+                      })
+                    }}
                   >
-                    <option value="">— 대통령 모둠 선택 (기본값: 선거 1위 모둠) —</option>
-                    {groupList.map((g) => (
+                    <option value="">— 대통령 모둠 선택 —</option>
+                    {availablePresidentGroups.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.emoji || '🏢'} {g.name || g.id} {electionWinnerId === g.id ? ' (🏆 선거 1위)' : ''}
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-amber-700">
-                    ※ 선거 당선 모둠이 기본으로 지정되며, 국무회의 다자토론 진행 및 최종 예산 배정액 확정 권한을 갖습니다.
+
+                  {branch.presidentGroupId && (
+                    <label className="block space-y-1 mt-2">
+                      <span className="text-[10px] font-black text-amber-700">대통령실 부처명</span>
+                      <input
+                        type="text"
+                        className="w-full text-xs border border-amber-300 rounded px-2 py-1.5 bg-white font-bold text-slate-800 focus:outline-none"
+                        value={branch.presidentMinistryName ?? '대통령실'}
+                        placeholder="예: 대통령실, 청와대"
+                        onChange={(e) => {
+                          const name = e.target.value
+                          const gid = branch.presidentGroupId
+                          const units = [...(branch.units || [])]
+                          const idx = units.findIndex(u => u.groupId === gid)
+                          if (idx !== -1) {
+                            units[idx] = { ...units[idx], ministryName: name, title: name }
+                          }
+                          onChange({
+                            ...bc,
+                            executive: {
+                              ...branch,
+                              presidentMinistryName: name,
+                              units
+                            }
+                          })
+                        }}
+                      />
+                    </label>
+                  )}
+
+                  <p className="text-[10px] text-amber-700 mt-1">
+                    ※ 대통령 모둠을 선택하면 행정부 부처 목록에 대통령실 유닛이 자동으로 동기화되며, 부처명을 언제든 바꿀 수 있습니다.
                   </p>
                 </div>
                 <div className="grid md:grid-cols-3 gap-2">
@@ -696,28 +846,31 @@ export default function BranchConfigEditor({ value, onChange }) {
               <p className="text-xs opacity-60 italic">배치된 모둠 없음 (기존 단일 법안 동작 유지)</p>
             )}
 
-            {units.map((unit, idx) => (
-              <div key={unit.unitId} className="relative">
-                <UnitRow
-                  unit={unit}
-                  onGroupChange={(gid) => updateUnit(branchKey, idx, { groupId: gid })}
-                  onTitleChange={(t) => updateUnit(branchKey, idx, branchKey === 'executive' ? { ministryName: t } : { title: t })}
-                  onRepChange={(sid) => updateUnit(branchKey, idx, { representativeStudentId: sid })}
-                  titleLabel={branchKey === 'executive' ? '부처명' : '법안명'}
-                  titlePlaceholder={meta.titlePlaceholder}
-                  memberList={membersOf(unit.groupId)}
+            {units.map((unit, idx) => {
+              if (branchKey === 'executive' && unit.groupId === branch.presidentGroupId) return null;
+              return (
+                <div key={unit.unitId} className="relative">
+                  <UnitRow
+                    unit={unit}
+                    onGroupChange={(gid) => updateUnit(branchKey, idx, { groupId: gid })}
+                    onTitleChange={(t) => updateUnit(branchKey, idx, branchKey === 'executive' ? { ministryName: t, title: t } : { title: t })}
+                    onRepChange={(sid) => updateUnit(branchKey, idx, { representativeStudentId: sid })}
+                    titleLabel={branchKey === 'executive' ? '부처명' : '법안명'}
+                    titlePlaceholder={meta.titlePlaceholder}
+                    memberList={membersOf(unit.groupId)}
                   groupList={availableGroupsFor(branchKey, 'units', idx)}
                   groups={groups}
                   hideRepresentative={branch.mode === 'collaborative'}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeUnit(branchKey, idx)}
-                  className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-sm"
-                  title="단위 제거"
-                >✕</button>
-              </div>
-            ))}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeUnit(branchKey, idx)}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-sm"
+                    title="단위 제거"
+                  >✕</button>
+                </div>
+              )
+            })}
 
             <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
               <div className="flex justify-between items-center mb-2">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe, updateAt, getOnce } from '../../lib/rtdb-helpers'
 import { formatCanvaEmbedUrl } from '../../lib/canva-embed'
+import { getDebatePrepCardConfig } from '../debate/tools/DebatePrepCard'
 import PosterMedia from '../phase1/PosterMedia'
 import { calculateRanks } from '../../lib/election'
 
@@ -334,25 +335,60 @@ export default function CanvaCardNewsStep() {
       })
     })
 
-    // ── 3-8. 토론 여론조사 (StancePoll pre/post) ──
+    // ── 3-8. 토론 여론조사 및 토론 활동 ──
     Object.entries(debateSessions).forEach(([sid, s]) => {
       const preVote = s.stancePoll?.pre?.votes?.[myStudentId]
       const postVote = s.stancePoll?.post?.votes?.[myStudentId]
-      if (!preVote && !postVote) return
-
       const phase = Number(s.phase) || 3
 
-      acts.push({
-        key: `debate_poll_${sid}`,
-        phase,
-        type: 'debate_poll',
-        debateSession: s,
-        icon: '📊',
-        shortTitle: '토론설문',
-        stepLabel: '토론 여론조사(사전/사후)',
-        title: s.title || '토론 여론조사',
-        content: s.topic ? `토론 주제: ${s.topic}` : '',
+      if (preVote || postVote) {
+        acts.push({
+          key: `debate_poll_${sid}`,
+          phase,
+          type: 'debate_poll',
+          debateSession: s,
+          icon: '📊',
+          shortTitle: '토론설문',
+          stepLabel: '토론 여론조사(사전/사후)',
+          title: s.title || '토론 여론조사',
+          content: s.topic ? `토론 주제: ${s.topic}` : '',
+        })
+      }
+
+      // ── 3-8-1. 토론전 카드 (Debate Prep Card) ──
+      const cardsObj = s.prepCards || {}
+      Object.entries(cardsObj).forEach(([cid, card]) => {
+        if (card.studentId === myStudentId) {
+          acts.push({
+            key: `debate_prep_${sid}_${card.studentId}`,
+            phase,
+            type: 'debate_prep',
+            icon: '📇',
+            shortTitle: '토론전카드',
+            stepLabel: '토론 준비 카드 작성',
+            title: `토론 준비 카드 (${s.title || '토론'})`,
+            debateCard: card,
+            debateSession: s,
+            content: `[입장] ${card.stance || '미정'}\n\n[주장/판단] ${card.mainClaim || ''}\n\n[근거] ${card.evidence || ''}\n\n[반박] ${card.rebuttal || ''}\n\n[대응] ${card.counterRebuttal || ''}`
+          })
+        }
       })
+
+      // ── 3-8-2. 평가단 최종 종합 평가 (Debate Final Evaluation) ──
+      const finalEvals = s.finalEvaluations || {}
+      const myEval = finalEvals[myStudentId]
+      if (myEval) {
+        acts.push({
+          key: `debate_final_eval_${sid}_${myStudentId}`,
+          phase,
+          type: 'debate_final_eval',
+          icon: '⚖️',
+          shortTitle: '최종평가',
+          stepLabel: '평가단 최종 종합 평가 제출',
+          title: `평가단 최종 종합 평가 (${s.title || '토론'})`,
+          content: typeof myEval === 'string' ? myEval : myEval.content || myEval.comment || '',
+        })
+      }
     })
 
     // ── 4. 내가 작성한 댓글 및 동료 평가 ──
@@ -811,8 +847,47 @@ export default function CanvaCardNewsStep() {
                             </div>
                           )}
 
-                                                    {/* 10. 본문 텍스트 콘텐츠 */}
-                          {act.content && act.type !== 'comment' && (
+                          {/* 9-1. 토론 준비 카드 */}
+                          {act.type === 'debate_prep' && act.debateCard && (() => {
+                            const card = act.debateCard
+                            const s = act.debateSession
+                            const config = getDebatePrepCardConfig(s)
+                            const fields = config?.fields || {}
+                            return (
+                              <div className="space-y-2 max-w-sm">
+                                <div className="bg-white border rounded-xl p-3 shadow-2xs flex flex-col gap-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="inline-block px-2 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-black uppercase">
+                                      입장: {card.stance || '미정'}
+                                    </span>
+                                  </div>
+                                  {Object.entries(fields).map(([key, f]) => {
+                                    const val = card[key]
+                                    if (!val) return null
+                                    return (
+                                      <div key={key} className="bg-slate-50 p-2 rounded-lg border border-slate-100 mt-1">
+                                        <span className="block text-[8px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">💡 {f.label}</span>
+                                        <p className="text-[10px] text-gray-700 leading-relaxed whitespace-pre-wrap">{val}</p>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })()}
+
+                          {/* 9-2. 평가단 최종 종합 평가 */}
+                          {act.type === 'debate_final_eval' && (
+                            <div className="bg-white border rounded-xl p-3 shadow-2xs space-y-2 max-w-sm">
+                              <span className="text-[9px] font-bold text-gray-400 block border-b pb-0.5">⚖️ 평가단 최종 종합 평가</span>
+                              <p className="text-[10px] text-gray-750 leading-relaxed whitespace-pre-wrap">
+                                {act.content}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* 10. 본문 텍스트 콘텐츠 */}
+                          {act.content && act.type !== 'comment' && act.type !== 'debate_prep' && act.type !== 'debate_final_eval' && (
                             <div className="p-3 bg-white rounded-xl border leading-relaxed text-xs whitespace-pre-wrap shadow-2xs">
                               {act.content}
                             </div>

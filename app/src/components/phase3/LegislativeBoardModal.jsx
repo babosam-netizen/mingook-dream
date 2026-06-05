@@ -47,6 +47,14 @@ function LegislativeBoardModal() {
 
   const cast = async (choice) => {
     if (role !== 'student' || !myStudentId) return
+    if (myChoice) {
+      alert('이미 표결을 완료하셨습니다. 변경할 수 없습니다.')
+      return
+    }
+    const choiceLabels = { pro: '찬성', con: '반대', abstain: '기권' }
+    const confirmed = confirm(`정말로 ${choiceLabels[choice]}하시겠습니까?\n제출 후에는 변경할 수 없습니다.`)
+    if (!confirmed) return
+
     await setAt(roomCode, `bills/${billId}/finalVotes/${myStudentId}`, {
       choice, ts: Date.now(),
     })
@@ -152,28 +160,42 @@ function LegislativeBoardModal() {
       </div>
 
       {role === 'student' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 w-full max-w-5xl">
-          <VoteButton
-            active={myChoice === 'pro'}
-            onClick={() => cast('pro')}
-            color="emerald"
-            icon="✅"
-            label="찬성"
-          />
-          <VoteButton
-            active={myChoice === 'con'}
-            onClick={() => cast('con')}
-            color="rose"
-            icon="❌"
-            label="반대"
-          />
-          <VoteButton
-            active={myChoice === 'abstain'}
-            onClick={() => cast('abstain')}
-            color="slate"
-            icon="⚪"
-            label="기권"
-          />
+        <div className="space-y-4 w-full max-w-5xl">
+          {!myChoice ? (
+            <div className="bg-rose-500/25 border border-rose-550 text-rose-300 text-xs sm:text-sm font-black px-4 py-2.5 rounded-xl text-center shadow-xs">
+              ⚠️ 표결 제출 후에는 선택을 변경할 수 없습니다. 신중히 결정해 주세요.
+            </div>
+          ) : (
+            <div className="bg-emerald-500/25 border border-emerald-550 text-emerald-300 text-xs sm:text-sm font-black px-4 py-2.5 rounded-xl text-center shadow-xs">
+              ✓ 표결 완료 (선택 변경 불가)
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5">
+            <VoteButton
+              active={myChoice === 'pro'}
+              disabled={!!myChoice}
+              onClick={() => cast('pro')}
+              color="emerald"
+              icon="✅"
+              label="찬성"
+            />
+            <VoteButton
+              active={myChoice === 'con'}
+              disabled={!!myChoice}
+              onClick={() => cast('con')}
+              color="rose"
+              icon="❌"
+              label="반대"
+            />
+            <VoteButton
+              active={myChoice === 'abstain'}
+              disabled={!!myChoice}
+              onClick={() => cast('abstain')}
+              color="slate"
+              icon="⚪"
+              label="기권"
+            />
+          </div>
         </div>
       )}
 
@@ -241,13 +263,19 @@ const COLOR_CLS = {
   slate:   { bg: 'bg-slate-600/20',   text: 'text-slate-300',   border: 'border-slate-500/50',   solid: 'bg-slate-500',   hover: 'hover:bg-slate-600',   solidActive: 'bg-slate-500 ring-4 ring-slate-300' },
 }
 
-function VoteButton({ active, onClick, color, icon, label }) {
+function VoteButton({ active, onClick, color, icon, label, disabled }) {
   const c = COLOR_CLS[color]
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`py-6 sm:py-10 rounded-2xl text-white font-black text-2xl sm:text-4xl shadow-lg transition ${
-        active ? c.solidActive : `${c.solid} ${c.hover}`
+      disabled={disabled}
+      className={`py-6 sm:py-10 rounded-2xl text-white font-black text-2xl sm:text-4xl shadow-lg transition active:scale-95 disabled:pointer-events-none ${
+        active 
+          ? c.solidActive 
+          : disabled 
+          ? 'bg-slate-800 text-slate-500 opacity-40 shadow-none border border-slate-700' 
+          : `${c.solid} ${c.hover}`
       }`}
     >
       <div className="text-5xl sm:text-7xl mb-2">{icon}</div>

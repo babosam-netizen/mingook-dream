@@ -20,6 +20,386 @@ const TIMELINE_TYPE_EMOJI = {
   link: '🔗',
   alliance: '🤝',
   poll: '📊',
+  debate_poll: '📊',
+  debate_prep: '📇',
+  debate_final_eval: '⚖️',
+}
+
+function hasDetail(t) {
+  if (!t) return false
+  if (t.type === 'reflection') return !!(t.body || t.impressive || t.revisit || t.pledge)
+  if (t.type === 'article' || t.type === 'bill') return !!t.body
+  if (t.type === 'debate_prep') {
+    if (t.isEvaluatorCard) {
+      return !!(t.evalViewpoint || t.evalCriteria || t.evalFocus || t.evalPrediction)
+    } else {
+      return !!(t.mainClaim || t.evidence || t.rebuttal || t.counterRebuttal)
+    }
+  }
+  if (t.type === 'debate_final_eval') return !!t.body
+  if (t.type === 'comment') return !!t.body
+  if (t.type === 'poll' || t.type === 'debate_poll') return !!t.reason
+  return false
+}
+
+function handleOpenDetailWindow(t, nickname) {
+  const newWin = window.open('', '_blank', 'width=800,height=700,scrollbars=yes,resizable=yes')
+  if (!newWin) {
+    alert('팝업 차단이 설정되어 있습니다. 팝업 허용 후 다시 시도해 주세요.')
+    return
+  }
+
+  const title = `${nickname} 학생의 ${t.label || '상세 보기'}`
+  let bodyHtml = ''
+
+  if (t.type === 'reflection') {
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header border-emerald">📝 정리글 에세이</div>
+        <div class="card-body">
+          ${t.body ? `<div class="essay-body">${t.body.replace(/\n/g, '<br/>')}</div>` : '<p class="empty">작성된 에세이가 없습니다.</p>'}
+        </div>
+      </div>
+      ${t.impressive ? `
+      <div class="card mt-4">
+        <div class="card-header border-emerald text-sm">✨ 가장 인상 깊은 장면</div>
+        <div class="card-body text-gray-700">${t.impressive.replace(/\n/g, '<br/>')}</div>
+      </div>` : ''}
+      ${t.revisit ? `
+      <div class="card mt-4">
+        <div class="card-header border-emerald text-sm">🔄 다시 생각해보게 된 부분</div>
+        <div class="card-body text-gray-700">${t.revisit.replace(/\n/g, '<br/>')}</div>
+      </div>` : ''}
+      ${t.pledge ? `
+      <div class="card mt-4">
+        <div class="card-header border-emerald text-sm">🤝 앞으로의 다짐</div>
+        <div class="card-body text-gray-700">${t.pledge.replace(/\n/g, '<br/>')}</div>
+      </div>` : ''}
+    `
+  } else if (t.type === 'article') {
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header border-blue">📰 작성 기사</div>
+        <div class="card-body">
+          <h2 class="article-headline">${t.headline || '제목 없음'}</h2>
+          ${t.perspective ? `<span class="badge badge-blue mb-4">${t.perspective}</span>` : ''}
+          <div class="essay-body mt-2">${t.body ? t.body.replace(/\n/g, '<br/>') : '<p class="empty">기사 본문이 없습니다.</p>'}</div>
+        </div>
+      </div>
+    `
+  } else if (t.type === 'bill') {
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header border-amber">📜 발의 법안</div>
+        <div class="card-body">
+          <h2 class="article-headline">${t.title || '법안 제목 없음'}</h2>
+          <div class="essay-body mt-4">${t.body ? t.body.replace(/\n/g, '<br/>') : '<p class="empty">법안 내용이 없습니다.</p>'}</div>
+        </div>
+      </div>
+    `
+  } else if (t.type === 'debate_prep') {
+    if (t.isEvaluatorCard) {
+      bodyHtml = `
+        <div class="card">
+          <div class="card-header border-violet">⚖️ 평가단 준비 카드</div>
+          <div class="card-body space-y-4">
+            ${t.evalViewpoint ? `
+            <div class="field-block">
+              <div class="field-label">🔍 살펴볼 핵심 관점</div>
+              <div class="field-value">${t.evalViewpoint.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${t.evalCriteria ? `
+            <div class="field-block">
+              <div class="field-label">📊 좋은 토론의 평가 기준</div>
+              <div class="field-value">${t.evalCriteria.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${t.evalFocus ? `
+            <div class="field-block">
+              <div class="field-label">🎯 가장 집중해서 들을 부분</div>
+              <div class="field-value">${t.evalFocus.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${t.evalPrediction ? `
+            <div class="field-block">
+              <div class="field-label">🔮 토론 결과 예상</div>
+              <div class="field-value">${t.evalPrediction.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+          </div>
+        </div>
+      `
+    } else {
+      let sourcesHtml = ''
+      if (Array.isArray(t.sources) && t.sources.length > 0) {
+        sourcesHtml = `
+          <div class="field-block pt-4 border-t-dashed">
+            <div class="field-label text-gray-400">🔗 참고 출처</div>
+            <ul class="sources-list">
+              ${t.sources.map(s => `<li>${s.url ? `<a href="${s.url}" target="_blank">${s.title || s.url}</a>` : s.title}</li>`).join('')}
+            </ul>
+          </div>
+        `
+      }
+      bodyHtml = `
+        <div class="card">
+          <div class="card-header border-amber">📇 토론 준비 카드 (${t.stance || '입장 미정'})</div>
+          <div class="card-body space-y-4">
+            ${t.mainClaim ? `
+            <div class="field-block">
+              <div class="field-label text-amber-700">📢 내 주장 (토론 전 주장)</div>
+              <div class="field-value">${t.mainClaim.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${t.evidence ? `
+            <div class="field-block">
+              <div class="field-label text-blue-700">📢 뒷받침하는 근거</div>
+              <div class="field-value">${t.evidence.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${t.rebuttal ? `
+            <div class="field-block">
+              <div class="field-label text-rose-700">📢 상대측 주장에 대한 반론</div>
+              <div class="field-value">${t.rebuttal.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${t.counterRebuttal ? `
+            <div class="field-block">
+              <div class="field-label text-purple-700">📢 상대측 반론 예상과 우리 팀의 대응</div>
+              <div class="field-value">${t.counterRebuttal.replace(/\n/g, '<br/>')}</div>
+            </div>` : ''}
+            ${sourcesHtml}
+          </div>
+        </div>
+      `
+    }
+  } else if (t.type === 'debate_final_eval') {
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header border-violet">⚖️ 평가단 최종 종합 평가</div>
+        <div class="card-body">
+          <div class="essay-body">${t.body ? t.body.replace(/\n/g, '<br/>') : '<p class="empty">내용이 없습니다.</p>'}</div>
+        </div>
+      </div>
+    `
+  } else if (t.type === 'comment') {
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header border-gray">💬 작성한 댓글</div>
+        <div class="card-body">
+          <div class="essay-body italic text-gray-600">"${t.body ? t.body.replace(/\n/g, '<br/>') : ''}"</div>
+        </div>
+      </div>
+    `
+  } else if (t.type === 'poll' || t.type === 'debate_poll') {
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header border-indigo">📊 설문 참여 / 입장 변화</div>
+        <div class="card-body space-y-4">
+          <div class="field-block">
+            <div class="field-label text-indigo-700">선택 결과</div>
+            <div class="field-value" style="font-weight: 800; font-size: 14px;">${t.choice || '—'}</div>
+          </div>
+          ${t.reason ? `
+          <div class="field-block">
+            <div class="field-label text-amber-700">💡 이유 / 변화 원인</div>
+            <div class="field-value text-amber-900 bg-amber-50/50 p-4 rounded-xl border border-amber-100">${t.reason.replace(/\n/g, '<br/>')}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    `
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+      <meta charset="UTF-8">
+      <title>\${title}</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+      <style>
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          font-family: 'Noto Sans KR', 'Inter', -apple-system, sans-serif;
+          background-color: #f8fafc;
+          color: #1e293b;
+          line-height: 1.6;
+          padding: 40px 20px;
+        }
+        .container {
+          max-width: 720px;
+          margin: 0 auto;
+        }
+        header {
+          margin-bottom: 24px;
+          border-bottom: 2px solid #e2e8f0;
+          padding-bottom: 16px;
+        }
+        .student-badge {
+          display: inline-block;
+          background-color: #6366f1;
+          color: white;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: 9999px;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+        }
+        h1 {
+          font-size: 24px;
+          font-weight: 900;
+          color: #0f172a;
+          margin-bottom: 4px;
+        }
+        .meta-time {
+          font-size: 11px;
+          color: #94a3b8;
+          font-weight: 600;
+        }
+        .card {
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+          overflow: hidden;
+          border: 1px solid #e2e8f0;
+          margin-bottom: 20px;
+        }
+        .card-header {
+          padding: 16px 24px;
+          font-size: 14px;
+          font-weight: 900;
+          background-color: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+        }
+        .border-emerald { border-left: 6px solid #10b981; color: #047857; }
+        .border-blue { border-left: 6px solid #3b82f6; color: #1d4ed8; }
+        .border-amber { border-left: 6px solid #f59e0b; color: #b45309; }
+        .border-violet { border-left: 6px solid #8b5cf6; color: #6d28d9; }
+        .border-gray { border-left: 6px solid #64748b; color: #475569; }
+        .border-indigo { border-left: 6px solid #6366f1; color: #4f46e5; }
+        .card-body {
+          padding: 24px;
+        }
+        .essay-body {
+          font-size: 14px;
+          line-height: 1.8;
+          color: #334155;
+          word-break: break-all;
+          white-space: pre-wrap;
+        }
+        .article-headline {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0f172a;
+          margin-bottom: 12px;
+          line-height: 1.4;
+        }
+        .badge {
+          display: inline-block;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 4px;
+          text-transform: uppercase;
+        }
+        .badge-blue {
+          background-color: #eff6ff;
+          color: #1e40af;
+          border: 1px solid #bfdbfe;
+        }
+        .field-block {
+          margin-bottom: 20px;
+        }
+        .field-block:last-child {
+          margin-bottom: 0;
+        }
+        .field-label {
+          font-size: 11px;
+          font-weight: 800;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .field-value {
+          font-size: 13px;
+          color: #334155;
+          line-height: 1.7;
+          background-color: #f8fafc;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1px solid #f1f5f9;
+          white-space: pre-wrap;
+        }
+        .empty {
+          color: #94a3b8;
+          font-size: 13px;
+          font-style: italic;
+          text-align: center;
+          padding: 12px 0;
+        }
+        .sources-list {
+          list-style: none;
+          padding-left: 20px;
+          margin-top: 8px;
+        }
+        .sources-list li {
+          font-size: 12px;
+          color: #475569;
+          margin-bottom: 4px;
+        }
+        .sources-list a {
+          color: #3b82f6;
+          text-decoration: underline;
+        }
+        .sources-list a:hover {
+          color: #1d4ed8;
+        }
+        .mt-4 { margin-top: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        .pt-4 { padding-top: 16px; }
+        .border-t-dashed { border-top: 1px dashed #e2e8f0; }
+        .space-y-4 > * + * { margin-top: 16px; }
+        button.close-btn {
+          display: block;
+          width: 100%;
+          padding: 12px;
+          background-color: #0f172a;
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          margin-top: 24px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        button.close-btn:hover {
+          background-color: #1e293b;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <header>
+          <span class="student-badge">\${openStudent.number}번 \${nickname}</span>
+          <h1>\${t.label}</h1>
+          <div class="meta-time">\${t.at ? new Date(t.at).toLocaleString() : ''}</div>
+        </header>
+        <main>
+          \${bodyHtml}
+          <button class="close-btn" onclick="window.close()">창 닫기</button>
+        </main>
+      </div>
+    </body>
+    </html>
+  `
+
+  newWin.document.write(htmlContent)
+  newWin.document.close()
 }
 
 function StudentAnalyticsPage() {
@@ -46,6 +426,7 @@ function StudentAnalyticsPage() {
   const [polls, setPolls] = useState({})
   const [pollReasons, setPollReasons] = useState({})
   const [coreIssueVotes, setCoreIssueVotes] = useState({})
+  const [debateSessions, setDebateSessions] = useState({})
 
   const [filterGroup, setFilterGroup] = useState('all')
   const [sort, setSort] = useState('number') // 'number'|'activity'|'name'
@@ -69,6 +450,7 @@ function StudentAnalyticsPage() {
       subscribe(roomCode, 'polls', (d) => setPolls(d || {})),
       subscribe(roomCode, 'polls/reasons', (d) => setPollReasons(d || {})),
       subscribe(roomCode, 'polls/coreIssue/votes', (d) => setCoreIssueVotes(d || {})),
+      subscribe(roomCode, 'debateSessions', (d) => setDebateSessions(d || {})),
     ]
     return () => subs.forEach((u) => u?.())
   }, [roomCode])
@@ -78,11 +460,11 @@ function StudentAnalyticsPage() {
       computeStudentStats({
         students, groups, posters, comments, candidates, electionVotes,
         bills, billVotes, juryVotes, verdicts, articles, reflections, links, alliances,
-        polls, pollReasons, coreIssueVotes,
+        polls, pollReasons, coreIssueVotes, debateSessions,
       }),
     [students, groups, posters, comments, candidates, electionVotes,
      bills, billVotes, juryVotes, verdicts, articles, reflections, links, alliances,
-     polls, pollReasons, coreIssueVotes],
+     polls, pollReasons, coreIssueVotes, debateSessions],
   )
 
   const list = useMemo(() => {
@@ -375,8 +757,18 @@ function StudentAnalyticsPage() {
                           {TIMELINE_TYPE_EMOJI[t.type] || '•'}
                         </div>
                         <div className="bg-white rounded-[1.5rem] border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all">
-                          <header className="flex items-center justify-between mb-4">
-                            <span className="font-black text-indigo-900">{t.label}</span>
+                          <header className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-indigo-900">{t.label}</span>
+                              {hasDetail(t) && (
+                                <button
+                                  onClick={() => handleOpenDetailWindow(t, openStudent.nickname)}
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5 font-bold"
+                                >
+                                  자세히 보기 ↗
+                                </button>
+                              )}
+                            </div>
                             <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-full uppercase tracking-wider">
                               {t.at ? new Date(t.at).toLocaleString() : ''}
                             </span>
@@ -384,7 +776,7 @@ function StudentAnalyticsPage() {
 
                           {/* 콘텐츠 본문 렌더링 [Antigravity] */}
                           <div className="space-y-3">
-                            {t.type === 'poll' && (
+                            {(t.type === 'poll' || t.type === 'debate_poll') && (
                               <div className="space-y-3">
                                 <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
                                   <p className="text-[10px] text-indigo-400 font-bold mb-1 uppercase">선택 결과</p>
@@ -437,6 +829,93 @@ function StudentAnalyticsPage() {
                                     )}
                                   </div>
                                 )}
+                              </div>
+                            )}
+
+                            {t.type === 'debate_prep' && (
+                              <div className="space-y-4 bg-amber-50/30 p-5 rounded-2xl border border-amber-100">
+                                {t.isEvaluatorCard ? (
+                                  <div className="space-y-2">
+                                    <div className="inline-block px-2.5 py-1 bg-violet-100 text-violet-750 font-bold rounded-lg text-[11px] mb-2">⚖️ 평가단 준비 카드</div>
+                                    {t.evalViewpoint && (
+                                      <div>
+                                        <p className="text-[10px] text-violet-600 font-bold mb-1">🔍 살펴볼 핵심 관점</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.evalViewpoint}</p>
+                                      </div>
+                                    )}
+                                    {t.evalCriteria && (
+                                      <div>
+                                        <p className="text-[10px] text-violet-600 font-bold mb-1">📊 좋은 토론의 평가 기준</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.evalCriteria}</p>
+                                      </div>
+                                    )}
+                                    {t.evalFocus && (
+                                      <div>
+                                        <p className="text-[10px] text-violet-600 font-bold mb-1">🎯 가장 집중해서 들을 부분</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.evalFocus}</p>
+                                      </div>
+                                    )}
+                                    {t.evalPrediction && (
+                                      <div>
+                                        <p className="text-[10px] text-violet-600 font-bold mb-1">🔮 토론 결과 예상</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.evalPrediction}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="inline-block px-2.5 py-1 bg-amber-100 text-amber-800 font-bold rounded-lg text-[11px]">💬 토론 준비 카드</span>
+                                      <span className="inline-block px-2 py-0.5 bg-white border border-amber-300 text-amber-700 font-bold rounded text-[10px]">{t.stance || '입장 없음'}</span>
+                                    </div>
+                                    {t.mainClaim && (
+                                      <div>
+                                        <p className="text-[10px] text-amber-600 font-bold mb-1">📢 내 주장</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.mainClaim}</p>
+                                      </div>
+                                    )}
+                                    {t.evidence && (
+                                      <div>
+                                        <p className="text-[10px] text-blue-600 font-bold mb-1">📢 뒷받침하는 근거</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.evidence}</p>
+                                      </div>
+                                    )}
+                                    {t.rebuttal && (
+                                      <div>
+                                        <p className="text-[10px] text-rose-600 font-bold mb-1">📢 상대측 주장에 대한 반론</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.rebuttal}</p>
+                                      </div>
+                                    )}
+                                    {t.counterRebuttal && (
+                                      <div>
+                                        <p className="text-[10px] text-purple-600 font-bold mb-1">📢 상대측 반론 예상과 우리 팀의 대응</p>
+                                        <p className="text-[11px] text-gray-700 whitespace-pre-wrap">{t.counterRebuttal}</p>
+                                      </div>
+                                    )}
+                                    {Array.isArray(t.sources) && t.sources.length > 0 && (
+                                      <div className="pt-2 border-t border-dashed border-amber-200">
+                                        <p className="text-[10px] text-gray-400 font-bold mb-1">🔗 출처</p>
+                                        <ul className="space-y-0.5 list-disc pl-4 text-[10px] text-gray-500">
+                                          {t.sources.map((s, idx) => (
+                                            <li key={idx}>
+                                              {s.url ? (
+                                                <a href={s.url} target="_blank" rel="noreferrer" className="underline hover:text-indigo-600">{s.title || s.url}</a>
+                                              ) : (
+                                                <span>{s.title}</span>
+                                              )}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {t.type === 'debate_final_eval' && (
+                              <div className="bg-violet-50/30 p-5 rounded-2xl border border-violet-100">
+                                <p className="text-xs text-violet-900 whitespace-pre-wrap leading-relaxed">{t.body}</p>
                               </div>
                             )}
                           </div>

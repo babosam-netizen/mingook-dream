@@ -58,6 +58,10 @@ function ExecutivePolicyCommentBox({ policy, myGroupId }) {
   const submit = async (e) => {
     e.preventDefault()
     if (!reason.trim() || busy) return
+
+    const confirmed = confirm('정말로 의견을 제출하시겠습니까?\n제출 후에는 찬/반 및 예산 의견을 수정하거나 삭제할 수 없습니다.')
+    if (!confirmed) return
+
     setBusy(true)
     try {
       const payload = {
@@ -73,21 +77,11 @@ function ExecutivePolicyCommentBox({ policy, myGroupId }) {
         ratings,
         updatedAt: Date.now(),
       }
-      if (editing && myComment) {
-        await updateAt(roomCode, `executivePolicyComments/${myComment.id}`, payload)
-      } else {
-        await pushUnder(roomCode, 'executivePolicyComments', payload)
-      }
+      await pushUnder(roomCode, 'executivePolicyComments', payload)
       reset()
     } finally {
       setBusy(false)
     }
-  }
-
-  const removeMine = async () => {
-    if (!myComment || !confirm('내 정책토의 의견을 삭제할까요?')) return
-    await removeAt(roomCode, `executivePolicyComments/${myComment.id}`)
-    reset()
   }
 
   return (
@@ -98,32 +92,32 @@ function ExecutivePolicyCommentBox({ policy, myGroupId }) {
         ))}
       </div>
       {role === 'student' && isMine && <p className="rounded-lg bg-amber-100 px-3 py-2 text-xs text-amber-800">우리 부처 정책에는 의견을 남기지 않고, 다른 부처 정책을 평가합니다.</p>}
-      {role === 'student' && !isMine && (!myComment || editing) && (
-        <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-          <div className="grid sm:grid-cols-3 gap-2">
-            <select value={stance} onChange={(e) => setStance(e.target.value)} className="rounded-lg border px-2 py-1.5 text-sm">
-              {STANCES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <select value={budgetOpinion} onChange={(e) => setBudgetOpinion(e.target.value)} className="rounded-lg border px-2 py-1.5 text-sm">
-              {BUDGET_OPINIONS.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <input type="number" min={0} value={suggestedBudget} onChange={(e) => setSuggestedBudget(e.target.value)} placeholder="제안 예산(억, 선택)" className="rounded-lg border px-2 py-1.5 text-sm" />
+      {role === 'student' && !isMine && !myComment && (
+        <div className="space-y-2">
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-black px-3 py-1.5 rounded-lg text-center shadow-2xs">
+            ⚠️ 신중하게 선택해 주세요. 제출 후에는 의견 및 찬/반을 수정하거나 삭제할 수 없습니다.
           </div>
-          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} placeholder="왜 그렇게 평가했나요? 정책과 예산을 함께 보고 이유를 적어 주세요." className="w-full resize-none rounded-lg border px-3 py-2 text-sm" />
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <MultiAxisRating value={ratings} onChange={setRatings} compact axes={EXECUTIVE_RATING_AXES} />
-            <div className="flex gap-2">
-              {editing && <button type="button" onClick={reset} className="rounded-lg bg-slate-200 px-3 py-1.5 text-sm">취소</button>}
-              <button disabled={busy || !reason.trim()} className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40">{editing ? '수정 저장' : '의견 남기기'}</button>
+          <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+            <div className="grid sm:grid-cols-3 gap-2">
+              <select value={stance} onChange={(e) => setStance(e.target.value)} className="rounded-lg border px-2 py-1.5 text-sm">
+                {STANCES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+              <select value={budgetOpinion} onChange={(e) => setBudgetOpinion(e.target.value)} className="rounded-lg border px-2 py-1.5 text-sm">
+                {BUDGET_OPINIONS.map((s) => <option key={s}>{s}</option>)}
+              </select>
+              <input type="number" min={0} value={suggestedBudget} onChange={(e) => setSuggestedBudget(e.target.value)} placeholder="제안 예산(억, 선택)" className="rounded-lg border px-2 py-1.5 text-sm" />
             </div>
-          </div>
-        </form>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} placeholder="왜 그렇게 평가했나요? 정책과 예산을 함께 보고 이유를 적어 주세요." className="w-full resize-none rounded-lg border px-3 py-2 text-sm" />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <MultiAxisRating value={ratings} onChange={setRatings} compact axes={EXECUTIVE_RATING_AXES} />
+              <button disabled={busy || !reason.trim()} className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40">의견 남기기</button>
+            </div>
+          </form>
+        </div>
       )}
-      {role === 'student' && !isMine && myComment && !editing && (
-        <div className="flex gap-2 text-xs">
-          <span className="text-emerald-700">이미 의견을 남겼어요.</span>
-          <button onClick={startEdit} className="rounded bg-amber-100 px-2 py-1 text-amber-800">수정</button>
-          <button onClick={removeMine} className="rounded bg-rose-100 px-2 py-1 text-rose-700">삭제</button>
+      {role === 'student' && !isMine && myComment && (
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-black px-3 py-2 rounded-lg text-center animate-fade-in flex items-center justify-center gap-1.5 shadow-sm">
+          <span>✓ 의견 제출 완료 (변경 및 삭제 불가)</span>
         </div>
       )}
       <ul className="space-y-2">

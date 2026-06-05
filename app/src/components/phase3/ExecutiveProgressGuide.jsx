@@ -65,7 +65,7 @@ function ExecutiveProgressGuide({ role }) {
         : '각 학생이 자기 시행령 조문과 실행 예산 항목을 저장하고, 대표가 역할별 저장본을 최종 정책보고서로 정리하도록 안내하세요.',
     },
     {
-      label: '③ 예산 초안 검토',
+      label: '③ 청구예산비교',
       student: '📺 TV 전광판 방송을 통해 정부 총예산 대비 각 부처의 예산 청구액을 확인하고 예산 한계를 파악하세요.',
       teacher: '빠른 제어 패널의 [🎬 전광판 띄우기] 버튼을 눌러 각 부처 예산 청구 현황을 교실 TV로 방송하세요.',
     },
@@ -103,7 +103,7 @@ function ExecutiveProgressGuide({ role }) {
   const stages = [
     { idx: 0, label: isCollaborative ? '준비' : '역할' },
     { idx: 1, label: '초안작성' },
-    { idx: 2, label: '초안검토' },
+    { idx: 2, label: '청구예산비교' },
     { idx: 3, label: '토의·평가' },
     { idx: 4, label: '국무회의' },
     { idx: 5, label: '최종수정' },

@@ -25,9 +25,16 @@ function RoleWorkspace({ groupId, sessionId, kind, filterSide }) {
   const rolesForKind = useGameStore((s) => s.config?.roles?.[kind])
   // 역할 우선순위: config.roles.[kind] → config.branchConfig.[kind].roles → DEFAULT_ROLES[kind]
   // BranchConfigEditor 는 config.branchConfig.[kind].roles 에 저장하므로 두 번째 폴백이 중요
+  const group = groups?.[groupId]
+  const isPresidentGroup = kind === 'executive' && (config?.branchConfig?.executive?.presidentGroupId === groupId || group?.name?.includes('대통령'))
+
+  const baseSource = isPresidentGroup
+    ? DEFAULT_ROLES.executive_president
+    : (rolesForKind || config?.branchConfig?.[kind]?.roles || DEFAULT_ROLES[kind] || EMPTY_ROLES)
+
   const allRolesBase = normalizeRoleList(
     kind,
-    rolesForKind || config?.branchConfig?.[kind]?.roles || DEFAULT_ROLES[kind] || EMPTY_ROLES,
+    baseSource
   )
   // 사법부: 팀 구분(검사팀/변호팀 등)에 맞는 역할만 표시
   const allRoles = (kind === 'judicial' && filterSide)
@@ -38,7 +45,6 @@ function RoleWorkspace({ groupId, sessionId, kind, filterSide }) {
 
   if (role !== 'student' || !myStudentId || !groupId) return null
 
-  const group = groups?.[groupId]
   const myRoleKey = group?.sessionRoles?.[sessionId]?.[myStudentId]
   const baseRole = allRoles.find((r) => r.key === myRoleKey)
   // 컨텍스트별 라벨 변환 — 행정부 장관은 부처명 적용

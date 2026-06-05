@@ -204,6 +204,214 @@ function summarizeSubmitter(entity, submissions, mode, groups, students) {
   }
 }
 
+function TagBadge({ tag }) {
+  if (!tag) return null
+  const tags = tag.split(',')
+  return (
+    <div className="inline-flex gap-1 ml-1.5">
+      {tags.includes('fact') && (
+        <span className="text-[8px] px-1 bg-blue-100 text-blue-700 rounded font-bold">사실</span>
+      )}
+      {tags.includes('opinion') && (
+        <span className="text-[8px] px-1 bg-orange-100 text-orange-700 rounded font-bold">의견</span>
+      )}
+    </div>
+  )
+}
+
+/* ── 신규: 단계별 세부내용 조회 모달 (4-1 reflect 퀵패널 전용) ── */
+function StepDetailModal({ student, step, r, onClose }) {
+  const stepNames = ['개요 작성', '도입 단락', '전개 단락', '마무리 단락', '최종본 작성']
+  if (!r) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => { if(e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 flex flex-col max-h-[80vh]">
+        <div className="bg-pink-50 border-b border-pink-100 px-4 py-3 flex items-center justify-between shrink-0">
+          <div>
+            <h4 className="font-extrabold text-pink-900 text-xs">{student?.number}번 {student?.nickname} 학생</h4>
+            <p className="text-[9px] text-pink-700 font-bold">{step}단계. {stepNames[step - 1]} 작성 내용</p>
+          </div>
+          <button onClick={onClose} className="w-6 h-6 rounded-full bg-white hover:bg-gray-100 text-gray-500 flex items-center justify-center font-bold text-xs border shadow-sm transition-colors">✕</button>
+        </div>
+
+        <div className="p-4 space-y-3.5 text-[11px] text-gray-700 overflow-y-auto leading-relaxed">
+          {step === 1 && (
+            <div className="space-y-2">
+              <div className="bg-blue-50/40 border border-blue-100 p-2.5 rounded-xl">
+                <span className="text-[9px] font-extrabold text-blue-700 block mb-1">📘 도입 개요</span>
+                <p className="font-medium text-gray-800">{r.outline?.intro || '(비어 있음)'}</p>
+              </div>
+              <div className="bg-emerald-50/40 border border-emerald-100 p-2.5 rounded-xl">
+                <span className="text-[9px] font-extrabold text-emerald-700 block mb-1">📗 전개 개요</span>
+                <p className="font-medium text-gray-800">{r.outline?.body || '(비어 있음)'}</p>
+              </div>
+              <div className="bg-pink-50/40 border border-pink-100 p-2.5 rounded-xl">
+                <span className="text-[9px] font-extrabold text-pink-700 block mb-1">📕 마무리 개요</span>
+                <p className="font-medium text-gray-800">{r.outline?.conclusion || '(비어 있음)'}</p>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-2.5">
+              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <p className="font-bold text-gray-500 text-[9px] mb-0.5">💡 도입 개요</p>
+                <p className="font-medium text-gray-700 italic">"{r.outline?.intro || ''}"</p>
+              </div>
+              <div className="space-y-1.5 pt-1">
+                <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                  <span className="text-[9px] font-bold text-gray-500 block mb-0.5">중심 문장</span>
+                  <p className="font-bold text-gray-900">{r.p1?.main || '(작성 전)'}<TagBadge tag={r.p1?.mainTag} /></p>
+                </div>
+                {r.p1?.supportA && (
+                  <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                    <span className="text-[9px] font-bold text-gray-500 block mb-0.5">뒷받침 문장 ①</span>
+                    <p className="font-medium text-gray-800">{r.p1.supportA}<TagBadge tag={r.p1.supportATag}/></p>
+                  </div>
+                )}
+                {r.p1?.supportB && (
+                  <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                    <span className="text-[9px] font-bold text-gray-500 block mb-0.5">뒷받침 문장 ②</span>
+                    <p className="font-medium text-gray-800">{r.p1.supportB}<TagBadge tag={r.p1.supportBTag}/></p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-2.5">
+              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <p className="font-bold text-gray-500 text-[9px] mb-0.5">💡 전개 개요</p>
+                <p className="font-medium text-gray-700 italic">"{r.outline?.body || ''}"</p>
+              </div>
+              <div className="space-y-1.5 pt-1">
+                <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                  <span className="text-[9px] font-bold text-gray-500 block mb-0.5">중심 문장</span>
+                  <p className="font-bold text-gray-900">{r.p2?.main || '(작성 전)'}<TagBadge tag={r.p2?.mainTag} /></p>
+                </div>
+                {r.p2?.supportA && (
+                  <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                    <span className="text-[9px] font-bold text-gray-500 block mb-0.5">뒷받침 문장 ①</span>
+                    <p className="font-medium text-gray-800">{r.p2.supportA}<TagBadge tag={r.p2.supportATag}/></p>
+                  </div>
+                )}
+                {r.p2?.supportB && (
+                  <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                    <span className="text-[9px] font-bold text-gray-500 block mb-0.5">뒷받침 문장 ②</span>
+                    <p className="font-medium text-gray-800">{r.p2.supportB}<TagBadge tag={r.p2.supportBTag}/></p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-2.5">
+              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <p className="font-bold text-gray-500 text-[9px] mb-0.5">💡 마무리 개요</p>
+                <p className="font-medium text-gray-700 italic">"{r.outline?.conclusion || ''}"</p>
+              </div>
+              <div className="space-y-1.5 pt-1">
+                <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                  <span className="text-[9px] font-bold text-gray-500 block mb-0.5">중심 문장</span>
+                  <p className="font-bold text-gray-900">{r.p3?.main || '(작성 전)'}<TagBadge tag={r.p3?.mainTag} /></p>
+                </div>
+                {r.p3?.supportA && (
+                  <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                    <span className="text-[9px] font-bold text-gray-500 block mb-0.5">뒷받침 문장 ①</span>
+                    <p className="font-medium text-gray-800">{r.p3.supportA}<TagBadge tag={r.p3.supportATag}/></p>
+                  </div>
+                )}
+                {r.p3?.supportB && (
+                  <div className="bg-white border p-2.5 rounded-xl shadow-sm">
+                    <span className="text-[9px] font-bold text-gray-500 block mb-0.5">뒷받침 문장 ②</span>
+                    <p className="font-medium text-gray-800">{r.p3.supportB}<TagBadge tag={r.p3.supportBTag}/></p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-2.5">
+              <div className="bg-white border p-3 rounded-xl shadow-sm border-pink-200">
+                <span className="text-[9px] font-extrabold text-pink-700 block mb-0.5">📝 글 제목</span>
+                <p className="font-extrabold text-gray-950 text-xs">"{r.title || '(제목 없음)'}"</p>
+              </div>
+              <div className="bg-pink-50/20 border border-pink-100 p-3 rounded-xl shadow-inner text-xs">
+                <span className="text-[9px] font-extrabold text-pink-700 block mb-1">📜 최종 에세이 본문</span>
+                <p className="whitespace-pre-wrap leading-relaxed font-semibold text-gray-800">{r.finalEssay || '(작성 전)'}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-50 px-4 py-2.5 flex justify-end border-t shrink-0">
+          <button onClick={onClose} className="px-4 py-1.5 bg-pink-600 text-white font-extrabold rounded-lg hover:bg-pink-700 transition shadow-sm">확인</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── 신규: 정리글 진행 체크리스트 (4-1 reflect 전용) ── */
+function ReflectionChecklist({ reflectionData, student, onStepClick }) {
+  const checkStepDone = (r, step) => {
+    if (!r) return false
+    if (step === 1) {
+      return !!(r.outline?.intro || r.outline?.body || r.outline?.conclusion)
+    }
+    if (step === 2) {
+      return !!(r.p1?.main || r.p1?.supportA || r.p1?.supportB)
+    }
+    if (step === 3) {
+      return !!(r.p2?.main || r.p2?.supportA || r.p2?.supportB)
+    }
+    if (step === 4) {
+      return !!(r.p3?.main || r.p3?.supportA || r.p3?.supportB)
+    }
+    if (step === 5) {
+      return !!r.finalEssay
+    }
+    return false
+  }
+
+  const r = reflectionData
+  const stepLabels = ['1.개요', '2.도입', '3.전개', '4.마무리', '5.최종']
+
+  return (
+    <div className="mt-2.5 flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+      {stepLabels.map((label, idx) => {
+        const step = idx + 1
+        const isDone = checkStepDone(r, step)
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => {
+              if (isDone) {
+                onStepClick(student, step, r)
+              } else {
+                alert(`${student.nickname} 학생은 아직 ${step}단계(${label.slice(2)})를 작성(저장)하지 않았습니다.`)
+              }
+            }}
+            className={`text-[8.5px] px-1.5 py-0.5 rounded font-black border transition-all duration-150 ${
+              isDone 
+                ? 'bg-emerald-500 text-white border-transparent hover:bg-emerald-600 shadow-sm hover:scale-105' 
+                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+            }`}
+            title={`${label.slice(2)} 단계 ${isDone ? '완료 (클릭 시 확인)' : '미작성'}`}
+          >
+            {isDone ? '✓' : '○'} {label.slice(2)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ── 후보 등록 상세 모달 (2-2 전용) ── */
 function CandidateDetailModal({ groupName, candidateData: c, journalistData, newspaperData, onClose }) {
   const backdrop = (e) => { if (e.target === e.currentTarget) onClose() }
@@ -505,6 +713,7 @@ export default function SubmissionStatusQuickPanel() {
   const [journalistsMap, setJournalistsMap] = useState({})
   const [journalistNewspapersMap, setJournalistNewspapersMap] = useState({})
   const [selectedCandidateGroup, setSelectedCandidateGroup] = useState(null)
+  const [activeStepDetail, setActiveStepDetail] = useState(null) // 정리글 5단계 세부 조회 모달 상태
 
   const stepId = wf.currentStep?.id
   const config = STEP_CONFIGS[stepId]
@@ -573,7 +782,12 @@ export default function SubmissionStatusQuickPanel() {
       const newspaperData = journalistNewspapersMap?.[row.id]
       return candidateData?.status === 'submitted' || (journalistData && newspaperData?.status === 'submitted')
     }).length
-    : rows.filter((row) => row.submitted).length
+    : stepId === 'reflect'
+      ? rows.filter((row) => {
+        const reflection = data.reflections?.[row.id]
+        return reflection && (reflection.status === 'pending' || reflection.status === 'approved')
+      }).length
+      : rows.filter((row) => row.submitted).length
   const totalCount = rows.length
   const modeLabel = config.mode === 'group' ? '모둠 제출' : '개인 제출'
 
@@ -596,18 +810,38 @@ export default function SubmissionStatusQuickPanel() {
           const candidateData  = isCandidateRegister ? (data.candidates?.[row.id] || null) : null
           const journalistData = isCandidateRegister ? (journalistsMap?.[row.id] || null) : null
           const newspaperData  = isCandidateRegister ? (journalistNewspapersMap?.[row.id] || null) : null
+          const reflectionData = stepId === 'reflect' ? (data.reflections?.[row.id] || null) : null
+
           const cardTitle = journalistData
             ? `${row.name} 기자단-${newspaperData?.title?.trim() || '신문 이름 미정'}`
             : row.name
-          // 후보 등록 단계: 기자단이거나 candidateSavedAt이 있으면 "시작함"으로 표시
+
           const candidateStarted = !!(candidateData?.candidateSavedAt || candidateData?.leaderStudentId || journalistData || newspaperData)
           const candidateSubmitted = candidateData?.status === 'submitted'
           const journalistSubmitted = !!(journalistData && newspaperData?.status === 'submitted')
+
           const displayBg = isCandidateRegister
             ? ((candidateSubmitted || journalistSubmitted) ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
                : candidateStarted  ? 'bg-amber-50 border-amber-200 text-amber-900'
                : 'bg-slate-50 border-slate-200 text-slate-500')
-            : (row.submitted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-500')
+            : stepId === 'reflect'
+              ? (reflectionData
+                  ? ((reflectionData.status === 'approved' || reflectionData.status === 'pending')
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : reflectionData.status === 'rejected'
+                        ? 'bg-red-50 border-red-200 text-red-900'
+                        : 'bg-amber-50 border-amber-200 text-amber-900')
+                  : 'bg-slate-50 border-slate-200 text-slate-500')
+              : (row.submitted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-500')
+
+          const getReflectionBadgeLabel = () => {
+            if (!reflectionData) return '미시작'
+            if (reflectionData.status === 'approved') return '승인완료'
+            if (reflectionData.status === 'pending') return '승인대기'
+            if (reflectionData.status === 'rejected') return '반려됨'
+            if (reflectionData.status === 'writing') return '작성중'
+            return '미시작'
+          }
 
           return (
             <button
@@ -623,7 +857,25 @@ export default function SubmissionStatusQuickPanel() {
                     newspaperData: journalistNewspapersMap?.[row.id] || null,
                   })
                 } else {
-                  setSelected(row)
+                  // 정리글 퀵패널 클릭 시, 내용이 작성되어 있으면 DetailModal로 띄워 줌
+                  if (stepId === 'reflect') {
+                    if (reflectionData) {
+                      // submission 형식으로 매칭하여 SubmissionDetailModal이 읽을 수 있게 전달
+                      setSelected({
+                        ...row,
+                        submissions: [{
+                          ...reflectionData,
+                          id: reflectionData.id || row.id,
+                          type: 'reflection',
+                          title: '정리글'
+                        }]
+                      })
+                    } else {
+                      alert(`${row.name} 학생은 아직 작성 전입니다.`)
+                    }
+                  } else {
+                    setSelected(row)
+                  }
                 }
               }}
               className={`text-left rounded-xl border px-3 py-2 transition hover:-translate-y-0.5 hover:shadow-sm cursor-pointer ${displayBg}`}
@@ -633,24 +885,47 @@ export default function SubmissionStatusQuickPanel() {
                 <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-black ${
                   isCandidateRegister
                     ? ((candidateSubmitted || journalistSubmitted) ? 'bg-emerald-600 text-white'
-                       : candidateStarted  ? 'bg-amber-500 text-white'
+                       : candidateStarted  ? 'bg-amber-505 text-white'
                        : 'bg-slate-200 text-slate-500')
-                    : (row.submitted ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500')
+                    : stepId === 'reflect'
+                      ? (reflectionData
+                          ? ((reflectionData.status === 'approved' || reflectionData.status === 'pending')
+                              ? 'bg-emerald-600 text-white'
+                              : reflectionData.status === 'rejected'
+                                ? 'bg-red-500 text-white'
+                                : 'bg-amber-500 text-white')
+                          : 'bg-slate-200 text-slate-500')
+                      : (row.submitted ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500')
                 }`}>
                   {isCandidateRegister
                     ? (candidateSubmitted ? '후보제출' : journalistSubmitted ? '신문제출' : candidateStarted ? '작성중' : '미시작')
-                    : (row.submitted ? `${row.count}건` : '미제출')}
+                    : stepId === 'reflect'
+                      ? getReflectionBadgeLabel()
+                      : (row.submitted ? `${row.count}건` : '미제출')}
                 </span>
               </div>
               <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
                 <span className="truncate">{row.meta}</span>
-                {!isCandidateRegister && (
+                {!isCandidateRegister && stepId !== 'reflect' && (
                   <span className="tabular-nums">{row.submitted ? fmtTime(row.latestAt) : '아직 없음'}</span>
                 )}
+                {stepId === 'reflect' && reflectionData && (
+                  <span className="tabular-nums">{fmtTime(timeOf(reflectionData))}</span>
+                )}
               </div>
+
               {/* 후보 등록 체크리스트 */}
               {isCandidateRegister && (
                 <CandidateChecklist candidateData={candidateData} journalistData={journalistData} newspaperData={newspaperData} />
+              )}
+
+              {/* 정리글 단계별 작성 체크리스트 */}
+              {stepId === 'reflect' && (
+                <ReflectionChecklist 
+                  reflectionData={reflectionData} 
+                  student={students?.[row.id]} 
+                  onStepClick={(student, step, r) => setActiveStepDetail({ student, step, r })} 
+                />
               )}
             </button>
           )
@@ -674,6 +949,16 @@ export default function SubmissionStatusQuickPanel() {
           journalistData={selectedCandidateGroup.journalistData}
           newspaperData={selectedCandidateGroup.newspaperData}
           onClose={() => setSelectedCandidateGroup(null)}
+        />
+      )}
+
+      {/* 단계별 개별 세부내용 조회 모달 */}
+      {activeStepDetail && (
+        <StepDetailModal
+          student={activeStepDetail.student}
+          step={activeStepDetail.step}
+          r={activeStepDetail.r}
+          onClose={() => setActiveStepDetail(null)}
         />
       )}
     </section>
@@ -723,7 +1008,44 @@ function SubmissionDetail({ item, groups, students }) {
           }).join('\n\n') || '자료 없음'} />
         </div>
       )}
-      {item.type === 'reflection' && <TextBlock title="정리글" text={[item.participation, item.feelings, item.mostImpressive, item.newLearnings, item.pledge, item.finalEssay, item.body].filter(Boolean).join('\n\n')} />}
+      {item.type === 'reflection' && (
+        <div className="space-y-2.5">
+          {item.title && (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <p className="text-[11px] font-black text-slate-400 mb-0.5">글 제목</p>
+              <p className="font-extrabold text-slate-900 text-sm">"{item.title}"</p>
+            </div>
+          )}
+          <TextBlock title="도입 개요" text={item.outline?.intro || item.participation || ''} />
+          <TextBlock title="전개 개요" text={item.outline?.body || item.mostImpressive || ''} />
+          <TextBlock title="마무리 개요" text={item.outline?.conclusion || item.pledge || ''} />
+          {item.p1?.main && (
+            <div className="rounded-xl border border-slate-100 bg-white p-3 space-y-1">
+              <p className="text-[10px] font-bold text-gray-500">📘 도입 단락</p>
+              <p className="text-xs font-bold">중심: {item.p1.main}<TagBadge tag={item.p1.mainTag}/></p>
+              {item.p1.supportA && <p className="text-xs text-gray-650 pl-2">↳ 뒷받침 ①: {item.p1.supportA}<TagBadge tag={item.p1.supportATag}/></p>}
+              {item.p1.supportB && <p className="text-xs text-gray-650 pl-2">↳ 뒷받침 ②: {item.p1.supportB}<TagBadge tag={item.p1.supportBTag}/></p>}
+            </div>
+          )}
+          {item.p2?.main && (
+            <div className="rounded-xl border border-slate-100 bg-white p-3 space-y-1">
+              <p className="text-[10px] font-bold text-gray-500">📗 전개 단락</p>
+              <p className="text-xs font-bold">중심: {item.p2.main}<TagBadge tag={item.p2.mainTag}/></p>
+              {item.p2.supportA && <p className="text-xs text-gray-650 pl-2">↳ 뒷받침 ①: {item.p2.supportA}<TagBadge tag={item.p2.supportATag}/></p>}
+              {item.p2.supportB && <p className="text-xs text-gray-650 pl-2">↳ 뒷받침 ②: {item.p2.supportB}<TagBadge tag={item.p2.supportBTag}/></p>}
+            </div>
+          )}
+          {item.p3?.main && (
+            <div className="rounded-xl border border-slate-100 bg-white p-3 space-y-1">
+              <p className="text-[10px] font-bold text-gray-500">📕 마무리 단락</p>
+              <p className="text-xs font-bold">중심: {item.p3.main}<TagBadge tag={item.p3.mainTag}/></p>
+              {item.p3.supportA && <p className="text-xs text-gray-650 pl-2">↳ 뒷받침 ①: {item.p3.supportA}<TagBadge tag={item.p3.supportATag}/></p>}
+              {item.p3.supportB && <p className="text-xs text-gray-650 pl-2">↳ 뒷받침 ②: {item.p3.supportB}<TagBadge tag={item.p3.supportBTag}/></p>}
+            </div>
+          )}
+          <TextBlock title="최종 본문 에세이" text={item.finalEssay || ''} />
+        </div>
+      )}
     </div>
   )
 }

@@ -208,6 +208,14 @@ function BillCard({ bill, commentsMap, rank, previewMode = false }) {
   // 정식 표결
   const castFinalVote = async (choice) => {
     if (!myStudentId || !billBoardActive) return
+    if (myFinalChoice) {
+      alert('이미 표결을 완료하셨습니다. 변경할 수 없습니다.')
+      return
+    }
+    const choiceLabels = { pro: '찬성', con: '반대', abstain: '기권' }
+    const confirmed = confirm(`정말로 ${choiceLabels[choice]}하시겠습니까?\n제출 후에는 변경할 수 없습니다.`)
+    if (!confirmed) return
+
     await setAt(roomCode, `bills/${bill.id}/finalVotes/${myStudentId}`, {
       choice,
       ts: Date.now(),
@@ -656,19 +664,60 @@ function BillCard({ bill, commentsMap, rank, previewMode = false }) {
                 <hr className="border-slate-200" />
                 {/* 전광판 안내 / 표결 버튼 */}
                 {billBoardActive ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => castFinalVote('pro')}
-                      className={`py-2.5 text-sm rounded-lg font-bold ${myFinalChoice === 'pro' ? 'bg-emerald-600 text-white shadow' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}>
-                      ✅ 찬성
-                    </button>
-                    <button onClick={() => castFinalVote('con')}
-                      className={`py-2.5 text-sm rounded-lg font-bold ${myFinalChoice === 'con' ? 'bg-rose-600 text-white shadow' : 'bg-rose-50 text-rose-800 hover:bg-rose-100'}`}>
-                      ❌ 반대
-                    </button>
-                    <button onClick={() => castFinalVote('abstain')}
-                      className={`py-2.5 text-sm rounded-lg font-bold ${myFinalChoice === 'abstain' ? 'bg-gray-500 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                      ⚪ 기권
-                    </button>
+                  <div className="space-y-2">
+                    {myFinalChoice ? (
+                      <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 text-[11px] font-black px-3 py-1.5 rounded-lg text-center animate-fade-in flex items-center justify-center gap-1.5 shadow-sm">
+                        <span>✓ 표결 완료 (변경 불가)</span>
+                      </div>
+                    ) : (
+                      <div className="bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-black px-3 py-1.5 rounded-lg text-center shadow-2xs">
+                        ⚠️ 표결 제출 후에는 선택을 변경할 수 없습니다. 신중히 결정해 주세요.
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => castFinalVote('pro')}
+                        disabled={!!myFinalChoice}
+                        className={`py-2.5 text-sm rounded-lg font-bold transition active:scale-95 disabled:pointer-events-none ${
+                          myFinalChoice === 'pro' 
+                            ? 'bg-emerald-600 text-white shadow ring-2 ring-emerald-300' 
+                            : myFinalChoice 
+                            ? 'bg-gray-155 text-gray-400 opacity-60' 
+                            : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                        }`}
+                      >
+                        ✅ 찬성
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => castFinalVote('con')}
+                        disabled={!!myFinalChoice}
+                        className={`py-2.5 text-sm rounded-lg font-bold transition active:scale-95 disabled:pointer-events-none ${
+                          myFinalChoice === 'con' 
+                            ? 'bg-rose-600 text-white shadow ring-2 ring-rose-300' 
+                            : myFinalChoice 
+                            ? 'bg-gray-155 text-gray-400 opacity-60' 
+                            : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
+                        }`}
+                      >
+                        ❌ 반대
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => castFinalVote('abstain')}
+                        disabled={!!myFinalChoice}
+                        className={`py-2.5 text-sm rounded-lg font-bold transition active:scale-95 disabled:pointer-events-none ${
+                          myFinalChoice === 'abstain' 
+                            ? 'bg-gray-600 text-white shadow ring-2 ring-gray-400' 
+                            : myFinalChoice 
+                            ? 'bg-gray-155 text-gray-400 opacity-60' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        ⚪ 기권
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-3 text-center text-sm text-amber-900 font-semibold">

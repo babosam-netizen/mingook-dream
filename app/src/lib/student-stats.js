@@ -23,6 +23,7 @@ export function computeStudentStats({
   polls = {},
   pollReasons = {},
   coreIssueVotes = {},
+  debateSessions = {},
 }) {
   const out = {}
 
@@ -304,6 +305,61 @@ export function computeStudentStats({
         choice: g?.name || civ.groupId,
         reason: ''
       })
+    }
+
+    // 11-4. 토론 여론조사 및 토론 활동 [Antigravity]
+    for (const [sid, s] of Object.entries(debateSessions)) {
+      const preVote = s.stancePoll?.pre?.votes?.[studentId]
+      const postVote = s.stancePoll?.post?.votes?.[studentId]
+      const preOption = preVote?.option || ''
+      const postOption = postVote?.option || ''
+      const postReason = postVote?.reason || ''
+
+      if (preVote || postVote) {
+        st.timeline.push({
+          at: postVote?.votedAt || preVote?.votedAt || s.createdAt || 0,
+          type: 'debate_poll',
+          label: `토론 여론조사 (${s.title || '토론'})`,
+          title: s.title || '토론 여론조사',
+          choice: `[사전] ${preOption || '미참여'} → [사후] ${postOption || '미참여'}`,
+          reason: postReason,
+        })
+      }
+
+      // 토론 준비 카드
+      const cardsObj = s.prepCards || {}
+      for (const card of Object.values(cardsObj)) {
+        if (card.studentId === studentId) {
+          st.timeline.push({
+            at: card.createdAt || s.createdAt || 0,
+            type: 'debate_prep',
+            label: `토론 준비 카드 (${s.title || '토론'})`,
+            stance: card.stance,
+            mainClaim: card.mainClaim,
+            evidence: card.evidence,
+            rebuttal: card.rebuttal,
+            counterRebuttal: card.counterRebuttal,
+            sources: card.sources,
+            isEvaluatorCard: !!card.isEvaluatorCard,
+            evalViewpoint: card.evalViewpoint,
+            evalCriteria: card.evalCriteria,
+            evalFocus: card.evalFocus,
+            evalPrediction: card.evalPrediction,
+          })
+        }
+      }
+
+      // 평가단 최종 종합 평가
+      const finalEvals = s.finalEvaluations || {}
+      const myEval = finalEvals[studentId]
+      if (myEval) {
+        st.timeline.push({
+          at: myEval.createdAt || myEval.savedAt || s.createdAt || 0,
+          type: 'debate_final_eval',
+          label: `평가단 최종 종합 평가 (${s.title || '토론'})`,
+          body: typeof myEval === 'string' ? myEval : myEval.content || myEval.comment || '',
+        })
+      }
     }
   }
 

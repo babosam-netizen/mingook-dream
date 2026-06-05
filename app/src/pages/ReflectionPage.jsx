@@ -114,30 +114,40 @@ function ReflectionPage({ previewMode = false }) {
         {/* 3단계: 정리글 작성 / 수정 */}
         {currentStepId === 'reflect' && (
           <HighlightBox active={wf.isHighlight('editor')} anyHighlight={anyHL} previewMode={previewMode}>
-            {!myReflection ? (
-              <ReflectionStructuredEditor />
+            {!myReflection || myReflection.status === 'writing' ? (
+              <ReflectionStructuredEditor existingReflection={myReflection} />
+            ) : myReflection.status === 'rejected' ? (
+              <div className="space-y-4">
+                {/* 반려 상태 표시 */}
+                <div className="p-4 rounded-2xl border-2 bg-red-50 border-red-200 shadow-sm animate-pulse">
+                  <div>
+                    <p className="font-bold text-sm text-red-800">
+                      ✗ 반려됨 — 수정이 필요해요
+                    </p>
+                    {myReflection.rejectMemo && (
+                      <p className="text-xs text-red-700 mt-1 bg-white border border-red-100 rounded-xl px-3 py-2 font-medium shadow-sm leading-relaxed">
+                        💬 선생님 피드백: {myReflection.rejectMemo}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {/* 반려 시 에디터를 접지 않고 바로 밑에 노출 */}
+                <ReflectionStructuredEditor existingReflection={myReflection} />
+              </div>
             ) : (
               <div className="space-y-3">
-                {/* 제출 완료 상태 표시 */}
-                <div className={`p-4 rounded-2xl border-2 ${
+                {/* 제출 완료 또는 승인 완료 상태 표시 */}
+                <div className={`p-4 rounded-2xl border-2 shadow-sm ${
                   myReflection.status === 'approved' ? 'bg-emerald-50 border-emerald-200'
-                  : myReflection.status === 'rejected' ? 'bg-red-50 border-red-200'
                   : 'bg-yellow-50 border-yellow-200'
                 }`}>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div>
                       <p className="font-bold text-sm">
-                        {myReflection.status === 'approved' ? '✓ 승인됨 — 게시 중'
-                          : myReflection.status === 'rejected' ? '✗ 반려됨 — 수정이 필요해요'
-                          : '⏳ 승인 대기 중'}
+                        {myReflection.status === 'approved' ? '✓ 승인됨 — 게시 중' : '⏳ 승인 대기 중'}
                       </p>
                       {myReflection.isModified && (
                         <p className="text-xs text-amber-700 mt-0.5">✏️ 수정됨 (선생님이 확인할 수 있어요)</p>
-                      )}
-                      {myReflection.rejectMemo && (
-                        <p className="text-xs text-red-700 mt-1 bg-red-100 rounded px-2 py-1">
-                          💬 선생님 메모: {myReflection.rejectMemo}
-                        </p>
                       )}
                     </div>
                   </div>

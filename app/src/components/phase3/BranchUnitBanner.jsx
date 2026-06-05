@@ -29,7 +29,23 @@ export default function BranchUnitBanner({ branch, side = null }) {
         ...(branchConfig.judicial?.defense     || []).map((u) => ({ ...u, _side: 'defense'     })),
       ]
     }
-    return branchConfig[branch]?.units || []
+    const rawUnits = [...(branchConfig[branch]?.units || [])]
+    if (branch === 'executive') {
+      const pGid = branchConfig.executive?.presidentGroupId
+      if (pGid) {
+        const hasPresidentUnit = rawUnits.some((u) => u.groupId === pGid)
+        if (!hasPresidentUnit) {
+          rawUnits.push({
+            unitId: 'exe-president',
+            groupId: pGid,
+            ministryName: branchConfig.executive?.presidentMinistryName || '대통령실',
+            title: branchConfig.executive?.presidentMinistryName || '대통령실',
+            representativeStudentId: null
+          })
+        }
+      }
+    }
+    return rawUnits
   }, [branchConfig, branch, side])
 
   // 내 모둠 ID

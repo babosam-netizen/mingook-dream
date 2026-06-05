@@ -4,6 +4,7 @@ import { subscribe, updateAt, getOnce } from '../../lib/rtdb-helpers'
 import PosterMedia from '../phase1/PosterMedia'
 import { calculateRanks } from '../../lib/election'
 import { formatCanvaEmbedUrl } from '../../lib/canva-embed'
+import { getDebatePrepCardConfig } from '../debate/tools/DebatePrepCard'
 
 /**
  * 1단계: 민국에서 나의 발자취 돌아보기
@@ -673,16 +674,59 @@ function ActivityModal({ activities, index, ratings, onRate, onClose, onPrev, on
             )
           })()}
 
+          {/* 9-1. 토론 준비 카드 */}
+          {act.type === 'debate_prep' && act.debateCard && (() => {
+            const card = act.debateCard
+            const s = act.debateSession
+            const config = getDebatePrepCardConfig(s)
+            const fields = config?.fields || {}
+            return (
+              <div className="space-y-3">
+                <div className="bg-white/95 border-2 border-indigo-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wide">
+                      입장: {card.stance || '미정'}
+                    </span>
+                  </div>
+                  {Object.entries(fields).map(([key, f]) => {
+                    const val = card[key]
+                    if (!val) return null
+                    return (
+                      <div key={key} className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-1">
+                        <span className="block text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">💡 {f.label}</span>
+                        <p className="text-xs font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap">{val}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 9-2. 평가단 최종 종합 평가 */}
+          {act.type === 'debate_final_eval' && (
+            <div className="bg-white/95 border-2 border-violet-200 rounded-2xl p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between text-xs text-gray-500 font-bold border-b pb-2">
+                <span>⚖️ 평가단 최종 종합 평가</span>
+              </div>
+              <p className="text-xs font-semibold text-slate-850 leading-relaxed whitespace-pre-wrap">
+                {act.content}
+              </p>
+            </div>
+          )}
+
           {/* 9. 일반 텍스트 콘텐츠 */}
-          {act.content && act.type !== 'comment' ? (
+          {act.content && act.type !== 'comment' && act.type !== 'debate_prep' && act.type !== 'debate_final_eval' ? (
             <div className="rounded-2xl p-5 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-gray-100 max-h-[30vh] overflow-y-auto"
               style={{ background: 'rgba(255,255,255,0.75)' }}>
               {act.content}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-400 text-xs select-none">
-              {!act.content && act.type !== 'candidate' && act.type !== 'comment' && '상세 활동 내용이 없습니다.'}
-            </div>
+            !act.content && act.type !== 'candidate' && act.type !== 'comment' && act.type !== 'debate_prep' && act.type !== 'debate_final_eval' && (
+              <div className="text-center py-8 text-gray-400 text-xs select-none">
+                상세 활동 내용이 없습니다.
+              </div>
+            )
           )}
 
           {/* 10. 댓글 및 다축 평가 상세 시각화 */}
@@ -1156,25 +1200,60 @@ export default function MyJourneyTimeline() {
       })
     })
 
-    // ── 3-8. 토론 여론조사 (StancePoll pre/post) ──
+    // ── 3-8. 토론 여론조사 및 토론 활동 ──
     Object.entries(debateSessions).forEach(([sid, s]) => {
       const preVote = s.stancePoll?.pre?.votes?.[myStudentId]
       const postVote = s.stancePoll?.post?.votes?.[myStudentId]
-      if (!preVote && !postVote) return
-
       const phase = Number(s.phase) || 3
 
-      acts.push({
-        key: `debate_poll_${sid}`,
-        phase,
-        type: 'debate_poll',
-        debateSession: s,
-        icon: '📊',
-        shortTitle: '토론설문',
-        stepLabel: '토론 여론조사(사전/사후)',
-        title: s.title || '토론 여론조사',
-        content: s.topic ? `토론 주제: ${s.topic}` : '',
+      if (preVote || postVote) {
+        acts.push({
+          key: `debate_poll_${sid}`,
+          phase,
+          type: 'debate_poll',
+          debateSession: s,
+          icon: '📊',
+          shortTitle: '토론설문',
+          stepLabel: '토론 여론조사(사전/사후)',
+          title: s.title || '토론 여론조사',
+          content: s.topic ? `토론 주제: ${s.topic}` : '',
+        })
+      }
+
+      // ── 3-8-1. 토론전 카드 (Debate Prep Card) ──
+      const cardsObj = s.prepCards || {}
+      Object.entries(cardsObj).forEach(([cid, card]) => {
+        if (card.studentId === myStudentId) {
+          acts.push({
+            key: `debate_prep_${sid}_${card.studentId}`,
+            phase,
+            type: 'debate_prep',
+            icon: '📇',
+            shortTitle: '토론전카드',
+            stepLabel: '토론 준비 카드 작성',
+            title: `토론 준비 카드 (${s.title || '토론'})`,
+            debateCard: card,
+            debateSession: s,
+            content: `[입장] ${card.stance || '미정'}\n\n[주장/판단] ${card.mainClaim || ''}\n\n[근거] ${card.evidence || ''}\n\n[반박] ${card.rebuttal || ''}\n\n[대응] ${card.counterRebuttal || ''}`
+          })
+        }
       })
+
+      // ── 3-8-2. 평가단 최종 종합 평가 (Debate Final Evaluation) ──
+      const finalEvals = s.finalEvaluations || {}
+      const myEval = finalEvals[myStudentId]
+      if (myEval) {
+        acts.push({
+          key: `debate_final_eval_${sid}_${myStudentId}`,
+          phase,
+          type: 'debate_final_eval',
+          icon: '⚖️',
+          shortTitle: '최종평가',
+          stepLabel: '평가단 최종 종합 평가 제출',
+          title: `평가단 최종 종합 평가 (${s.title || '토론'})`,
+          content: typeof myEval === 'string' ? myEval : myEval.content || myEval.comment || '',
+        })
+      }
     })
 
     // ── 4. 내가 작성한 댓글 및 동료 평가 ──

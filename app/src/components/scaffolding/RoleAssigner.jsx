@@ -61,14 +61,16 @@ function RoleAssigner({ groupId, sessionId, kind, filterSide, onClose }) {
   // selector는 안정 reference만 반환해야 함 (`|| []` 는 매번 새 배열 → 무한 루프)
   const rolesForKind = useGameStore((s) => s.config?.roles?.[kind])
   const roles = useMemo(() => {
+    const g = groups?.[groupId]
+    const isPresidentGroup = kind === 'executive' && (config?.branchConfig?.executive?.presidentGroupId === groupId || g?.name?.includes('대통령'))
+
+    const baseSource = isPresidentGroup
+      ? DEFAULT_ROLES.executive_president
+      : (rolesForKind || config?.branchConfig?.[kind]?.roles || DEFAULT_ROLES[kind] || EMPTY_ROLES)
 
     // 역할 우선순위: config.roles.[kind] → config.branchConfig.[kind].roles → DEFAULT_ROLES[kind]
-    const baseRoles = normalizeRoleList(
-      kind,
-      rolesForKind || config?.branchConfig?.[kind]?.roles || DEFAULT_ROLES[kind] || EMPTY_ROLES,
-    )
+    const baseRoles = normalizeRoleList(kind, baseSource)
     if (kind === 'executive' && groupId) {
-      const g = groups?.[groupId]
       const memberCount = g?.members ? Object.keys(g.members).length : 4
       const limit = Math.max(4, memberCount)
       return baseRoles.slice(0, limit)

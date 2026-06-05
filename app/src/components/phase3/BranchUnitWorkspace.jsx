@@ -212,6 +212,23 @@ export default function BranchUnitWorkspace({
       setDraftField(mapped, 'support', q(0), { append: true })
       setDraftField(mapped, 'finalScale', q(1), { append: true })
       setDraftField(mapped, 'discussionReflection', q(2), { append: true })
+    } else if (sectionKey === 'cabinet_moderator') {
+      setDraftField(mapped, 'title', q(0))
+      setDraftField(mapped, 'purpose', q(0))
+      setDraftField(mapped, 'problem', q(1))
+      setDraftField(mapped, 'content', q(2))
+    } else if (sectionKey === 'president_support') {
+      setDraftField(mapped, 'content', q(0))
+      setDraftField(mapped, 'ordinance', q(1))
+      setDraftField(mapped, 'support', q(2))
+    } else if (sectionKey === 'discussion_summary') {
+      setDraftField(mapped, 'publicConcern', q(0))
+      setDraftField(mapped, 'publicResponse', q(1))
+      setDraftField(mapped, 'finalMessage', q(2))
+    } else if (sectionKey === 'economic_feasibility') {
+      setDraftField(mapped, 'evidence', q(0))
+      setDraftField(mapped, 'expectedEffect', q(1))
+      setDraftField(mapped, 'finalScale', q(2))
     }
 
     const fallbackText = cleanDraftText(directFields.text || section?.content?.text)
@@ -297,7 +314,20 @@ export default function BranchUnitWorkspace({
     const bc = config?.branchConfig
     if (!bc) return null
     if (branch === 'legislative') return bc.legislative?.units?.find((u) => u.unitId === unitId) || null
-    if (branch === 'executive')   return bc.executive?.units?.find((u) => u.unitId === unitId) || null
+    if (branch === 'executive') {
+      const found = bc.executive?.units?.find((u) => u.unitId === unitId)
+      if (found) return found
+      if (unitId === 'exe-president' && bc.executive?.presidentGroupId) {
+        return {
+          unitId: 'exe-president',
+          groupId: bc.executive.presidentGroupId,
+          ministryName: bc.executive.presidentMinistryName || '대통령실',
+          title: bc.executive.presidentMinistryName || '대통령실',
+          representativeStudentId: null
+        }
+      }
+      return null
+    }
     if (branch === 'judicial') {
       const inProsecution = bc.judicial?.prosecution?.find((u) => u.unitId === unitId)
       if (inProsecution) return { ...inProsecution, _side: 'prosecution' }
@@ -346,13 +376,26 @@ export default function BranchUnitWorkspace({
     ) : '문서'
 
   const branchRoles = useMemo(() => {
+    // unitId가 'exe-president'이거나, presidentGroupId와 일치하거나, 모둠명에 '대통령'이 포함된 경우
+    const isPresidentGroup = branch === 'executive' && (
+      unitId === 'exe-president' ||
+      (unitGroupId && (
+        config?.branchConfig?.executive?.presidentGroupId === unitGroupId ||
+        groups?.[unitGroupId]?.name?.includes('대통령')
+      ))
+    )
+
+    const baseSource = isPresidentGroup
+      ? DEFAULT_ROLES.executive_president
+      : (config?.roles?.[branch] ||
+         config?.branchConfig?.[branch]?.roles ||
+         DEFAULT_ROLES[branch] || [])
+
     // 역할 우선순위: config.roles.[branch] → config.branchConfig.[branch].roles → DEFAULT_ROLES[branch]
     // BranchConfigEditor 는 config.branchConfig.[branch].roles 에 저장하므로 두 번째 폴백이 중요
     const baseRoles = normalizeRoleList(
       branch,
-      config?.roles?.[branch] ||
-        config?.branchConfig?.[branch]?.roles ||
-        DEFAULT_ROLES[branch] || [],
+      baseSource
     )
     if (branch === 'executive' && unitGroupId) {
       const g = groups?.[unitGroupId]
@@ -1051,6 +1094,15 @@ export default function BranchUnitWorkspace({
 
   const isExecutiveRoleMode = branch === 'executive' && !isCollaborative
 
+  // 대통령 모둠 여부 (branchRoles가 이미 executive_president로 설정된 경우)
+  const isPresidentUnit = branch === 'executive' && (
+    unitId === 'exe-president' ||
+    (unitGroupId && (
+      config?.branchConfig?.executive?.presidentGroupId === unitGroupId ||
+      groups?.[unitGroupId]?.name?.includes('대통령')
+    ))
+  )
+
   if (isExecutiveRoleMode) {
     const renderExecutiveRoleBoard = () => (
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm text-left">
@@ -1061,8 +1113,14 @@ export default function BranchUnitWorkspace({
           </div>
         )}
         <div className="bg-gray-50 border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">🎭 역할 선택 및 모둠 현황</h3>
-          <span className="text-[11px] text-gray-400">상단에서 내 역할을 고르고, 아래에서 작성과 예산을 진행합니다.</span>
+          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+            {isPresidentUnit ? '👑 국정 역할 배정 및 모둠 현황' : '🎭 역할 선택 및 모둠 현황'}
+          </h3>
+          <span className="text-[11px] text-gray-400">
+            {isPresidentUnit
+              ? '위의 역할을 고르고 대통령실 임무를 수행하세요.'
+              : '상단에서 내 역할을 고르고, 아래에서 작성과 예산을 진행합니다.'}
+          </span>
         </div>
         <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
           {decoratedBranchRoles.map((roleDef) => {
@@ -1189,9 +1247,23 @@ export default function BranchUnitWorkspace({
         {/* 외부 피드 */}
         <ExternalFeedBar unitId={unitId} />
 
+        {/* 대통령실 전용 안내 배너 */}
+        {isPresidentUnit && (
+          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl">👑</span>
+            <div>
+              <p className="font-black text-yellow-900 text-sm">대통령실 — 행정부 총괄 조정 업무</p>
+              <p className="text-xs text-yellow-800 mt-1">
+                대통령실은 일반 부처와 달리 시행령·예산 청구 대신 <b>국정 방향 수립, 국무회의 준비, 공약 이행 지시</b>를 담당합니다.
+                아래 역할을 배정하고 각자의 임무를 수행하세요.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 단계 표시 (2단계 구조) */}
         <div className="flex items-center gap-1 flex-wrap">
-          {['✏️ 초안 및 예산 작성', '✅ 대표 최종 확정'].map((label, i) => {
+          {['✏️ 역할별 임무 수행', '✅ 대표 최종 확정'].map((label, i) => {
             const stepIndex = isLocked ? 1 : 0
             const isActive = stepIndex === i
             const isDone = stepIndex > i
@@ -1220,7 +1292,9 @@ export default function BranchUnitWorkspace({
             {/* 1. 역할별 섹션 초안 (질문, 답, 출처) */}
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <div className="bg-gray-50 border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">📝 역할별 섹션 초안</h3>
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  {isPresidentUnit ? '👑 대통령실 임무 수행' : '📝 역할별 섹션 초안'}
+                </h3>
                 <span className="text-[11px] text-emerald-600 font-semibold">
                   {mySection && sections[mySection]?.status === 'ready' ? '✅ 저장됨' : '⬜ 작성 중'}
                 </span>
@@ -1228,7 +1302,9 @@ export default function BranchUnitWorkspace({
               <div className="p-4 space-y-4">
                 {!myRoleKey ? (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-4 text-center">
-                    👉 위 <b>역할 선택</b>에서 내 역할을 먼저 배정해야 초안 작성 폼이 나타납니다.
+                    {isPresidentUnit
+                      ? '👑 위 역할 선택에서 대통령실 역할을 먼저 배정해야 임무 수행 폼이 나타납니다.'
+                      : '👉 위 역할 선택에서 내 역할을 먼저 배정해야 초안 작성 폼이 나타납니다.'}
                   </p>
                 ) : (
                   <div className="space-y-4">

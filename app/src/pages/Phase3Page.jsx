@@ -476,11 +476,12 @@ function Phase3Page({ previewMode = false, forcedTab = null }) {
             {/* 기사 작성 — 여론조사 단계에서는 블러 카드로 남기지 않고 완전히 접음 */}
             {!lockToPoll && (
               <HighlightBox active={wf.isHighlight('article')} anyHighlight={anyHL} previewMode={previewMode}>
-                <section>
+                <section className="space-y-4">
                   <h2 className="text-lg font-bold text-blue-800 mb-3">📰 기사 작성</h2>
                   <p className="text-sm text-gray-500 mb-3">
                     이번 라운드 결과를 기사로 정리해 여론판에 게시하세요.
                   </p>
+                  {lockToArticle && <PhaseActivitySummary phase={3} tab={effectiveTab} />}
                   <ArticleSection />
                 </section>
               </HighlightBox>
@@ -492,15 +493,14 @@ function Phase3Page({ previewMode = false, forcedTab = null }) {
                 <div>
                   <h2 className="text-lg font-bold text-sky-900">📊 {wf.currentStep?.studentLabel || '여론조사'}</h2>
                   <p className="text-sm text-sky-700 mt-1">
-                    지금은 선생님이 연 여론조사에 참여하는 단계입니다. 이전 기관 활동 화면은 잠시 접어 두고, 아래 여론조사와 활동 요약을 확인하세요.
+                    지금은 선생님이 연 여론조사에 참여하는 단계입니다. 이전 기관 활동 화면은 잠시 접어 두고, 아래 여론조사를 확인하세요.
                   </p>
                 </div>
-                {wf.showSummary && <PhaseActivitySummary phase={3} tab={effectiveTab} />}
                 <PollFeed plannedOnly={true} />
               </section>
             )}
 
-            {!lockToArticle && !lockToPoll && wf.showSummary && <PhaseActivitySummary phase={3} tab={effectiveTab} />}
+
 
             {/* 학생용 자동 모달 */}
             {!lockToArticle && !lockToPoll && <BriefingAutoModal kind={effectiveTab} />}

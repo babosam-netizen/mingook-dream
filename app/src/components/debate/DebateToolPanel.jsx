@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import useDebateStore, { DEBATE_SIDE_LABELS } from '../../store/debateStore'
 import { useWorkflow } from '../../lib/use-workflow'
-import { updateAt, subscribe, pushUnder } from '../../lib/rtdb-helpers'
+import { updateAt, subscribe, pushUnder, getOnce, setAt } from '../../lib/rtdb-helpers'
 import StancePoll from './tools/StancePoll'
 import DebatePrepCard from './tools/DebatePrepCard'
 import DebateTimer, { computeRemaining, getRoundInfo } from './tools/DebateTimer'
@@ -1153,6 +1153,9 @@ const lastSessionIdRef = useRef(null)
                       )}
                     </>
                   )}
+                  {mySideId === 'evaluator' && (
+                    <EvaluatorFinalCommentForm session={session} />
+                  )}
                 </>
               )}
               {tab === 'post' && (
@@ -1302,6 +1305,9 @@ const lastSessionIdRef = useRef(null)
                     <p className="text-[11px] text-gray-400 text-center pt-2">
                       선생님이 토론 후 여론조사를 열면 위쪽에 표시됩니다.
                     </p>
+                  )}
+                  {mySideId === 'evaluator' && (
+                    <EvaluatorFinalCommentForm session={session} />
                   )}
                 </>
               )}
@@ -1519,6 +1525,119 @@ function EvalProgressBar({ activeEval, allEvals, evaluatorCount }) {
   }
 
   return null
+}
+
+function EvaluatorFinalCommentForm({ session }) {
+  const roomCode = useGameStore((s) => s.roomCode)
+  const myStudentId = useGameStore((s) => s.myStudentId)
+  const [commentText, setCommentText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Load existing final evaluation
+  useEffect(() => {
+    if (!roomCode || !session?.id || !myStudentId) return
+    getOnce(roomCode, `debateSessions/${session.id}/finalEvaluations/${myStudentId}`).then((d) => {
+      if (d) {
+        setCommentText(typeof d === 'string' ? d : d.content || d.comment || '')
+      }
+    })
+  }, [roomCode, session?.id, myStudentId])
+
+  const handleImportAll = () => {
+    const evals = Object.values(session?.speechEvals || {})
+    const lines = []
+
+    evals.forEach((ev) => {
+      const myRes = ev.results?.[myStudentId]
+      if (!myRes) return
+
+      // Single target
+      if (ev.targetLabel && myRes.scores) {
+        const scoresStr = myRes.scores.map((s, idx) => `${EVAL_AXES[idx]}: ${s}점`).join(', ')
+        lines.push(`• [${ev.targetLabel}] (${scoresStr})`)
+        if (myRes.comment) {
+          lines.push(`  └ 의견: ${myRes.comment}`)
+        }
+      }
+
+      // Multi target
+      if (myRes.perTarget) {
+        Object.entries(myRes.perTarget).forEach(([tid, d]) => {
+          const target = ev.targets?.find((t) => t.id === tid)
+          const targetLabel = target ? target.label : tid
+          const scoresStr = d.scores.map((s, idx) => `${EVAL_AXES[idx]}: ${s}점`).join(', ')
+          lines.push(`• [${ev.targetLabel} - ${targetLabel}] (${scoresStr})`)
+          if (d.comment) {
+            lines.push(`  └ 의견: ${d.comment}`)
+          }
+        })
+      }
+    })
+
+    if (lines.length === 0) {
+      alert('아직 작성하신 개별 발언 평가가 없습니다.')
+      return
+    }
+
+    const merged = lines.join('\n')
+    setCommentText((prev) => prev ? `${prev}\n\n${merged}` : merged)
+  }
+
+  const handleSave = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
+      await setAt(roomCode, `debateSessions/${session.id}/finalEvaluations/${myStudentId}`, {
+        content: commentText,
+        updatedAt: Date.now(),
+      })
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    } catch (e) {
+      alert('저장 실패: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-4 p-4 border-2 border-violet-300 rounded-2xl bg-violet-50/50 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-black text-violet-850 flex items-center gap-1">
+          ⚖️ 평가단 최종 종합 평가
+        </h4>
+        <button
+          type="button"
+          onClick={handleImportAll}
+          className="px-2.5 py-1.5 text-[10px] font-black text-violet-700 bg-white border border-violet-300 rounded-xl hover:bg-violet-100 transition active:scale-95 cursor-pointer shadow-2xs"
+        >
+          📥 개별 평가 모두 불러오기
+        </button>
+      </div>
+      <p className="text-[10px] text-gray-500">
+        토론 전체 과정에 대한 최종 평가 의견을 자유롭게 기록하세요. 개별 평가 불러오기를 누르면 지금까지 남겼던 발언별 별점과 한줄 의견이 자동 정리되어 추가됩니다.
+      </p>
+      <textarea
+        value={commentText}
+        onChange={(e) => setCommentText(e.target.value)}
+        rows={6}
+        placeholder="종합 평가 내용을 작성해 주세요..."
+        className="w-full p-3 text-xs bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent leading-relaxed"
+      />
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[9px] text-gray-400 leading-tight">작성한 평가는 나의 발자취(여정) 및 캔바 카드뉴스 참고란에 연동됩니다.</span>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !commentText.trim()}
+          className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-200 transition active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+        >
+          {saving ? '저장 중...' : saveSuccess ? '✓ 저장 완료!' : '최종 평가 저장'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default DebateToolPanel

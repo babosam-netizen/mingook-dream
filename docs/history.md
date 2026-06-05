@@ -6,6 +6,12 @@
 
 ---
 
+## v1.3.1 (2026-06-05) [Claude] — 대통령실 지정이 학생 화면에 연결 안 되던 라우팅 버그 수정
+- **[FIX]** 행정부 역할중심 모드에서 **대통령 모둠으로 지정해도 일반 부처(장관)와 같은 시행령·예산 작성 폼이 뜨던** 문제 수정.
+- **원인**: `ExecutiveTab.jsx`가 대통령실 전용 화면(`PresidentWorkspace`)을 띄울지 판단할 때 `unit.unitId === 'exe-president'` 리터럴만 비교. 그러나 대통령 모둠을 지정하면 `unitId`는 `genUnitId('exe')`로 저장되어 절대 `'exe-president'`가 되지 않아 항상 일반 `BranchUnitWorkspace`로 떨어졌다.
+- **수정**: 판별을 `presidentGroupId` 일치 또는 모둠명 '대통령' 포함으로 보강. 대통령 역할 데이터·전용 화면은 이미 존재했고 연결만 누락된 상태였음. `npm run build` 통과, `APP_BUILD` v1.3.1.
+- (참고: 이 개발폴더 history는 NAS본의 v1.3.0[Antigravity] 항목이 누락된 상태로 분기되어 있음.)
+
 ## v1.2.325 — 사법부 증거 TV 송출 + 타이머 TV 전체화면 기본화 (2026-05-31 / [Claude])
 - **[기능]** `TeacherDebateControl`에 🗂️ 증거 TV 송출 패널 추가 — 모의재판 세션에서 증거 목록 버튼으로 `judicialPresentation` Firebase 경로에 송출, 같은 버튼 재클릭으로 종료.
 - **[기능]** `DebateTimerTVPage` 전면 개편 — 전체화면 타이머가 기본(토글 버튼 없음), 증거 송출 시 `z-[70]` 오버레이로 타이머 위에 표시(상단에 단계명+타이머 작게 실시간 표시).

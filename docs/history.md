@@ -6,6 +6,11 @@
 
 ---
 
+## v1.3.5 (2026-06-06) [Claude] — 제출물 열람 기사 유형별 구분 + implementation_plan 수정 누적 로그 도입
+- `SubmissionStatusQuickPanel` 기사 단계(article1/2/3)를 여정/토론후 2그룹으로 분리(contextType 기준), 이름·건수 표시 + 본문 펼침. 신규 `ArticleGroupBlock`.
+- `implementation_plan.md` 상단에 "수정 누적 로그" 표 도입(이름·날짜·상태 ✅/🔶/⏸ 누적). 대통령실 개편·제출물 열람 항목 시드. NAS/개발폴더 양쪽.
+- `npm run build` 통과. `APP_BUILD` v1.3.5.
+
 ## v1.3.4 (2026-06-06) [Claude] — 대통령실 개편 후속 4건 (국무회의 대본 노출·업무지시 게시·호칭·제출물 열람)
 - #1 신규 `CabinetScriptBox`: 국무회의 다자토론에서 대통령실 모둠 타이머 밑에 진행 대본(branchDrafts/exe-president/cabinetScript) 읽기전용 노출(`DebateToolPanel`).
 - #2 `ExecutivePolicyDiscussionList`가 `branchDrafts/exe-president/directives` 구독 → 대통령실 정책 카드에 "부처별 업무지시" 블록(부처가 반응 가능).

@@ -39,10 +39,14 @@ const STEP_CONFIGS = {
     sources: ['bills'],
   },
   article1: {
-    title: '3-8 입법 결과 기사 작성 확인',
+    title: '3-8 입법 단계 기사 확인 (여정 / 토론후)',
     mode: 'student',
     sources: ['articles'],
     articleFilter: (article) => Number(article?.phase || 0) === 3 && article?.target === 'legislative',
+    articleGroups: [
+      { key: 'journey', label: '📜 입법 여정 기사', hint: '활동 중 작성', filter: (a) => Number(a?.phase || 0) === 3 && a?.target === 'legislative' && a?.contextType !== 'debate' },
+      { key: 'debate', label: '📢 입법 토론후 기사', hint: '상정 토론 후 작성', filter: (a) => Number(a?.phase || 0) === 3 && a?.target === 'legislative' && a?.contextType === 'debate' },
+    ],
   },
   'executive-budget': {
     title: '3-10 정책·예산안 제출 확인',
@@ -50,16 +54,24 @@ const STEP_CONFIGS = {
     sources: ['policies'],
   },
   article2: {
-    title: '3-17 행정 결과 기사 작성 확인',
+    title: '3-17 행정(시행령) 단계 기사 확인 (여정 / 토론후)',
     mode: 'student',
     sources: ['articles'],
     articleFilter: (article) => Number(article?.phase || 0) === 3 && article?.target === 'executive',
+    articleGroups: [
+      { key: 'journey', label: '🏢 행정 여정 기사', hint: '활동 중 작성', filter: (a) => Number(a?.phase || 0) === 3 && a?.target === 'executive' && a?.contextType !== 'debate' },
+      { key: 'debate', label: '📢 시행령 토론후 기사', hint: '국무회의 토론 후 작성', filter: (a) => Number(a?.phase || 0) === 3 && a?.target === 'executive' && a?.contextType === 'debate' },
+    ],
   },
   article3: {
-    title: '3-20 사법 결과 기사 작성 확인',
+    title: '3-20 사법 단계 기사 확인 (여정 / 토론후)',
     mode: 'student',
     sources: ['articles'],
     articleFilter: (article) => Number(article?.phase || 0) === 3 && article?.target === 'judicial',
+    articleGroups: [
+      { key: 'journey', label: '⚖️ 사법 여정 기사', hint: '활동 중 작성', filter: (a) => Number(a?.phase || 0) === 3 && a?.target === 'judicial' && a?.contextType !== 'debate' },
+      { key: 'debate', label: '📢 재판 토론후 기사', hint: '모의재판 후 작성', filter: (a) => Number(a?.phase || 0) === 3 && a?.target === 'judicial' && a?.contextType === 'debate' },
+    ],
   },
   reflect: {
     title: '4-1 정리글 작성 제출 확인',
@@ -703,6 +715,56 @@ function CandidateChecklist({ candidateData, journalistData, newspaperData }) {
   )
 }
 
+// 기사 단계 — 유형(여정/토론후)별로 묶어 작성된 기사를 이름과 함께 보여준다.
+function ArticleGroupBlock({ group, articles, students }) {
+  const [openId, setOpenId] = useState(null)
+  return (
+    <div className="rounded-xl border border-sky-100 bg-sky-50/40 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-black text-sky-900">
+          {group.label} <span className="text-xs font-bold text-sky-500">({articles.length})</span>
+        </h3>
+        {group.hint && <span className="text-[10px] text-slate-400 shrink-0">{group.hint}</span>}
+      </div>
+      {articles.length === 0 ? (
+        <p className="text-xs text-slate-300 italic py-2 text-center">아직 작성된 기사가 없습니다. (빈칸)</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {articles.map((a) => {
+            const st = students?.[a.authorStudentId]
+            const author = st ? `${st.number || ''}번 ${st.nickname || ''}`.trim() : (a.authorNickname || '익명')
+            const open = openId === a.id
+            const approved = a.status === 'approved'
+            return (
+              <li key={a.id}>
+                <button
+                  onClick={() => setOpenId(open ? null : a.id)}
+                  className="w-full text-left bg-white border border-sky-100 rounded-lg px-3 py-2 hover:bg-sky-50 transition"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-slate-800 truncate">{a.headline || '제목 없음'}</span>
+                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${approved ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {approved ? '게시' : '대기'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {author}{a.debateSessionTopic ? ` · 🎙️ ${a.debateSessionTopic}` : ''}
+                  </div>
+                  {open && (
+                    <p className="text-xs text-slate-700 whitespace-pre-wrap mt-2 pt-2 border-t border-slate-100">
+                      {(a.body || '').trim() || '(빈칸)'}
+                    </p>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function SubmissionStatusQuickPanel() {
   const wf = useWorkflow()
   const roomCode = useGameStore((s) => s.roomCode)
@@ -774,6 +836,37 @@ export default function SubmissionStatusQuickPanel() {
   }, [config, groupEntries, studentEntries, submissions, groups, students])
 
   if (!config) return null
+
+  // 기사 단계: 여정/토론후 등 유형별로 묶어서 이름과 함께 표시
+  if (config.articleGroups) {
+    const allArticles = asArray(data.articles).filter((a) => a.status !== 'deleted')
+    const totalShown = config.articleGroups.reduce((n, g) => n + allArticles.filter(g.filter).length, 0)
+    return (
+      <section className="bg-white rounded-2xl shadow-lg border-2 border-sky-100 p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-[11px] font-black text-sky-600 uppercase tracking-wide">제출 확인 빠른보기 · 기사 유형별</p>
+            <h2 className="text-base font-black text-slate-900">{config.title}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">기사 제목을 누르면 본문을 펼쳐 확인할 수 있습니다.</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-black text-sky-700 tabular-nums">{totalShown}</div>
+            <div className="text-[11px] font-bold text-slate-400">작성된 기사</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {config.articleGroups.map((g) => (
+            <ArticleGroupBlock
+              key={g.key}
+              group={g}
+              students={students}
+              articles={allArticles.filter(g.filter).sort((a, b) => (b.createdAt || b.updatedAt || 0) - (a.createdAt || a.updatedAt || 0))}
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   const doneCount = isCandidateRegister
     ? rows.filter((row) => {

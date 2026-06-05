@@ -6,6 +6,19 @@
 
 ---
 
+## v1.3.3 (2026-06-05) [Claude] — 대통령실 개편 증분 2~4: 공약 선택·부처 업무지시·국무회의 대본·예산 예약분
+- 제안서: `docs/proposal_president_pledge_decree_2026-06-05.md` (rev1).
+- 신규 `PresidentControlPanel.jsx`: ① 공약 선택(candidates.pledges 중 1개 + 법령 연결 한 줄) ② 부처별 업무지시(executive.units 자동 나열) ③ 국무회의 대본 자동생성·공동수정. 저장 `branchDrafts/exe-president/{selectedPledge|directives|cabinetScript}`.
+- 예산 예약분: 총예산에서 대통령 공약 예산 먼저 차감 → 부처는 잔여분에서 조정. `ExecutiveBudgetReviewBoard`·`Phase3ExecutiveQuickPanel` 보정. `ExecutiveTab`에서 대통령실 유닛에 패널 연결.
+- `npm run build` 통과. `APP_BUILD` v1.3.3.
+
+## v1.3.2 (2026-06-05) [Claude] — 대통령실 개편 증분 1: "공약 연계 시행령" 역할로 전면 교체 (부처 엔진 재사용)
+- 제안서: `docs/proposal_president_pledge_decree_2026-06-05.md` (rev1, 사용자 조정 반영).
+- `scaffolding-data.js` `executive_president`를 일반 부처 미러 4역할(공약 목적·대상/시행절차/지원내용·예산/점검·효과 담당)로 교체. 시행령 요소 키(skeleton/decree/evidence/effect) 동일 사용 + 역할별 예산 1개. 안내문은 "공약" 프레이밍.
+- `ExecutiveTab.jsx`: 대통령실을 별도 `PresidentWorkspace`(약 300줄) 제거하고 `BranchUnitWorkspace` 엔진으로 라우팅(데드코드·미사용 import 정리).
+- 남은 증분: 공약 선택 / 부처별 업무지시(units 자동 나열) / 국무회의 대본 자동생성 / 예산 예약분. 미배포(증분 묶음 완성 후 배포).
+- `npm run build` 통과. `APP_BUILD` v1.3.2.
+
 ## v1.3.1 (2026-06-05) [Claude] — 대통령실 지정이 학생 화면에 연결 안 되던 라우팅 버그 수정
 - **[FIX]** 행정부 역할중심 모드에서 **대통령 모둠으로 지정해도 일반 부처(장관)와 같은 시행령·예산 작성 폼이 뜨던** 문제 수정.
 - **원인**: `ExecutiveTab.jsx`가 대통령실 전용 화면(`PresidentWorkspace`)을 띄울지 판단할 때 `unit.unitId === 'exe-president'` 리터럴만 비교. 그러나 대통령 모둠을 지정하면 `unitId`는 `genUnitId('exe')`로 저장되어 절대 `'exe-president'`가 되지 않아 항상 일반 `BranchUnitWorkspace`로 떨어졌다.

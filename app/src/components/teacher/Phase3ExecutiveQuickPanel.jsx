@@ -136,13 +136,22 @@ function Phase3ExecutiveQuickPanel() {
   const isAllSubmitted = totalGroups > 0 && submitted >= totalGroups
   const isAllRequested = totalGroups > 0 && requested >= totalGroups
   const totalBudget = Number(branchConfig?.executive?.totalBudget) || 100
-  const totalRequested = policyEntries.reduce((sum, p) => {
+  const presidentGid = branchConfig?.executive?.presidentGroupId || null
+  const isPresidentP = (p) =>
+    (presidentGid && p.gid === presidentGid) ||
+    p.branchUnitId === 'exe-president' ||
+    String(p.ministryName || '').includes('대통령')
+  const policyBudgetOf = (p) => {
     const itemTotal = Array.isArray(p.budgetItems)
       ? p.budgetItems.reduce((s, item) => s + (Number(item.amount) || 0), 0)
       : 0
-    return sum + (Number(p.requestedBudget ?? p.draftBudget) || itemTotal || 0)
-  }, 0)
-  const budgetDiff = Math.round((totalRequested - totalBudget) * 10) / 10
+    return Number(p.requestedBudget ?? p.draftBudget) || itemTotal || 0
+  }
+  // 대통령 공약 예약분을 먼저 떼고, 부처는 잔여분(ministryCap)에서 조정한다.
+  const presidentReserved = policyEntries.filter(isPresidentP).reduce((sum, p) => sum + policyBudgetOf(p), 0)
+  const ministryCap = Math.max(0, totalBudget - presidentReserved)
+  const totalRequested = policyEntries.filter((p) => !isPresidentP(p)).reduce((sum, p) => sum + policyBudgetOf(p), 0)
+  const budgetDiff = Math.round((totalRequested - ministryCap) * 10) / 10
   const cabinetDebate = useMemo(() => Object.entries(debateSessions || {})
     .map(([id, s]) => ({ id, ...s }))
     .find((s) => s?.relatedExecutiveMeeting && s?.isActive) || null, [debateSessions])
@@ -243,6 +252,7 @@ function Phase3ExecutiveQuickPanel() {
       '행정부 국무회의 다자간 토론',
       '',
       `정부 총예산: ${totalBudget}억`,
+      ...(presidentReserved > 0 ? [`대통령 공약 예약분: ${presidentReserved}억 (먼저 확보) → 부처 가용: ${ministryCap}억`] : []),
       `부처 청구액 합계: ${totalRequested}억`,
       `현재 상태: ${stateLine}`,
       '',
@@ -574,7 +584,7 @@ function Phase3ExecutiveQuickPanel() {
                 </button>
               </div>
               <p className="text-[11px] text-slate-500">
-                현재 예산 상태: 총 {totalBudget}억 / 청구 {totalRequested}억 · {budgetDiff > 0 ? `${budgetDiff}억 초과` : budgetDiff < 0 ? `${Math.abs(budgetDiff)}억 잔여` : '균형'}
+                현재 예산 상태: 총 {totalBudget}억{presidentReserved > 0 ? ` (👑예약 ${presidentReserved} · 부처가용 ${ministryCap})` : ''} / 부처청구 {totalRequested}억 · {budgetDiff > 0 ? `${budgetDiff}억 초과` : budgetDiff < 0 ? `${Math.abs(budgetDiff)}억 잔여` : '균형'}
               </p>
             </div>
           )}

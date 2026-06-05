@@ -38,17 +38,30 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
   const branchConfig = config.branchConfig || {}
   const countryName = branchConfig.executive?.countryName || config.countryName || '비빔민국'
   const totalCap = branchConfig.executive?.totalBudget ?? 100
+  const presidentGroupId = branchConfig.executive?.presidentGroupId || null
+  const isPresidentPolicy = (p) =>
+    (presidentGroupId && p.groupId === presidentGroupId) ||
+    p.branchUnitId === 'exe-president' ||
+    String(p.ministryName || '').includes('대통령')
 
   // 저장(saved) 또는 제출(submitted)된 정책 목록 필터링
   const allPolicies = Object.values(policiesMap || {}).filter((p) =>
     ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p.status)
   )
 
-  // 청구액 합계 계산
-  const totalRequested = allPolicies.reduce((sum, p) => sum + (Number(p.draftBudget) || 0), 0)
-  const diff = totalRequested - totalCap
+  // 대통령 공약 예약분: 총예산에서 먼저 차감하고, 부처는 잔여분에서 조정한다.
+  const presidentReserved = allPolicies
+    .filter(isPresidentPolicy)
+    .reduce((sum, p) => sum + (Number(p.draftBudget) || 0), 0)
+  const ministryCap = Math.max(0, totalCap - presidentReserved)
+
+  // 부처(대통령실 제외) 청구액 합계
+  const totalRequested = allPolicies
+    .filter((p) => !isPresidentPolicy(p))
+    .reduce((sum, p) => sum + (Number(p.draftBudget) || 0), 0)
+  const diff = totalRequested - ministryCap
   const isExcess = diff > 0
-  const pct = totalCap > 0 ? Math.round((totalRequested / totalCap) * 100) : 0
+  const pct = ministryCap > 0 ? Math.round((totalRequested / ministryCap) * 100) : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 md:p-12 font-sans selection:bg-amber-500 selection:text-slate-950">
@@ -78,6 +91,11 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
                 <span className="text-4xl md:text-6xl font-black text-amber-300 tabular-nums tracking-tight">{totalCap}</span>
                 <span className="text-amber-200/80 text-lg md:text-2xl font-bold">억원</span>
               </div>
+              {presidentReserved > 0 && (
+                <span className="text-[11px] md:text-xs font-semibold text-amber-200/80 mt-2 leading-snug">
+                  👑 대통령 공약 예약 {presidentReserved}억<br />부처 가용 {ministryCap}억
+                </span>
+              )}
             </div>
 
             {/* 부처 청구 합계 */}
@@ -151,7 +169,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-2xl md:text-3xl font-black text-amber-300 tracking-tight">
-                        🏢 {ministryName}
+                        {isPresidentPolicy(policy) ? '👑' : '🏢'} {ministryName}
                       </span>
                       {g?.name && (
                         <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-white/90 border border-white/20">

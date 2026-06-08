@@ -6,6 +6,9 @@
 
 ---
 
+## v1.3.8 (2026-06-06) [Claude] — 역할중심 시행령 작성기에 통과 법안 보기 추가
+- `ExecutiveSectionEditor` 상단에 "📜 통과된 법안 보기" 접기 패널(기본 펼침). `passedBills` 제목·본문 표시. 역할중심 모드에서 통과 법안이 안 보이던 문제 보완. `APP_BUILD` v1.3.8.
+
 ## v1.3.7 (2026-06-06) [Claude] — 기사 본문 글자수 제한 400 → 1000자
 - `ArticleEditor` 본문 `maxLength` 400→1000, 카운터/문구 갱신. `APP_BUILD` v1.3.7.
 

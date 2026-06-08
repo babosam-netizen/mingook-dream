@@ -946,7 +946,7 @@ export function ExecutiveSectionBudgetManager({
 // ────────────────────────────────────────────────────────────────────────
 // 2단계: 개별 역할별 임무 완수 에디터 (통합형)
 // ────────────────────────────────────────────────────────────────────────
-export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, saving, groupId, passedBills, myNote }) {
+export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, saving, groupId, passedBills = [], myNote }) {
   const config = useGameStore((s) => s.config)
   const className = useGameStore((s) => s.className)
   const countryName = config?.branchConfig?.executive?.countryName || config?.countryName || className || '축소국'
@@ -1018,6 +1018,26 @@ export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, savin
 
   return (
     <div className="space-y-4">
+      {/* 0. 통과(가결)된 법안 보기 — 시행령은 이 법을 집행하기 위한 것이므로 작성 중 참고 */}
+      {passedBills.length > 0 && (
+        <details open className="bg-indigo-50/60 border border-indigo-200 rounded-xl p-3 text-left">
+          <summary className="cursor-pointer text-sm font-black text-indigo-900">
+            📜 통과된 법안 보기 ({passedBills.length}건)
+            <span className="ml-1 text-[11px] font-bold text-indigo-500">— 시행령은 이 법을 실제로 집행하기 위한 규칙이에요</span>
+          </summary>
+          <div className="mt-2 space-y-2">
+            {passedBills.map((bill) => (
+              <div key={bill.id} className="bg-white border border-indigo-100 rounded-lg p-2.5">
+                <p className="text-xs font-black text-indigo-950">⚖️ {bill.title || '제목 없음'}</p>
+                <p className="mt-1 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {buildBillBodyText(bill) || '(본문 없음)'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       {/* 1. 미션 가이드 및 이전 메모 */}
       <div className="bg-white p-3 border border-indigo-100 rounded-xl space-y-3">
         <div className="flex items-center justify-between border-b pb-1">

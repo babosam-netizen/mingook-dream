@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe, setAt, pushUnder, removeAt } from '../../lib/rtdb-helpers'
 import { DEFAULT_ROLES, normalizeRoleList } from '../../lib/scaffolding-data'
@@ -73,11 +73,18 @@ export default function ExecutivePrepPanel({ unitId, groupId }) {
   }, [brainstorm])
 
   const [wordInput, setWordInput] = useState('')
+  const addingRef = useRef(false)
   const addWord = async () => {
     const w = wordInput.trim()
     if (!w || !roomCode || !isMember) return
-    await pushUnder(roomCode, `${base}/brainstorm`, { word: w, by: myStudentId, at: Date.now() })
+    if (addingRef.current) return // 한글 IME Enter 이중 호출 등 중복 추가 방지
+    addingRef.current = true
     setWordInput('')
+    try {
+      await pushUnder(roomCode, `${base}/brainstorm`, { word: w, by: myStudentId, at: Date.now() })
+    } finally {
+      addingRef.current = false
+    }
   }
   const removeMyWord = async (id) => {
     if (!roomCode) return
@@ -150,7 +157,7 @@ export default function ExecutivePrepPanel({ unitId, groupId }) {
               <input
                 value={wordInput}
                 onChange={(e) => setWordInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); addWord() } }}
                 placeholder="단어를 적고 Enter (예: 안전점검, 지원금, 캠페인)"
                 maxLength={20}
                 className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"

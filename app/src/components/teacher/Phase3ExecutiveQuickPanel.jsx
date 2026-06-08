@@ -82,6 +82,22 @@ function Phase3ExecutiveQuickPanel() {
     })
   }
 
+  // 교사가 특정 학생을 대표(isRepresentative 역할)로 직접 지정
+  const assignRepresentative = async (gid, studentId, repKey, sessionRoles) => {
+    if (!roomCode || !repKey) return
+    const updates = {}
+    // 기존 대표 보유자 해제 (선택 학생과 다른 사람)
+    Object.entries(sessionRoles || {}).forEach(([sid, rk]) => {
+      if (rk === repKey && sid !== studentId) updates[`groups/${gid}/sessionRoles/executive-default/${sid}`] = null
+    })
+    if (studentId) updates[`groups/${gid}/sessionRoles/executive-default/${studentId}`] = repKey
+    try {
+      await updateAt(roomCode, '', updates)
+    } catch (err) {
+      alert('대표 지정 에러: ' + err.message)
+    }
+  }
+
   const resetAllRoles = async () => {
     if (!roomCode || !groups) return
     if (!confirm('🚨 모든 행정부 모둠원 역할 지정을 정말 초기화(배정 취소)할까요?')) return
@@ -706,6 +722,17 @@ function Phase3ExecutiveQuickPanel() {
               const prepWords = Object.entries(wordCounts).map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count)
               const chosenTaskText = prep.chosenTask?.text?.trim() || ''
 
+              // 대표 지정용: 이 부처의 대표 역할 키 + 현재 대표 + 모둠원 목록
+              const presidentGroupId = branchConfig?.executive?.presidentGroupId
+              const isPresidentUnit = unit.groupId === presidentGroupId || Boolean(group?.name?.includes('대통령'))
+              const unitRoles = isPresidentUnit ? normalizeRoleList('executive', DEFAULT_ROLES.executive_president || []) : branchRoles
+              const repKey = unitRoles.find((r) => r.isRepresentative)?.key || null
+              const currentRepId = repKey ? (Object.entries(sessionRoles).find(([, rk]) => rk === repKey)?.[0] || '') : ''
+              const unitMembers = Object.keys(group?.members || {})
+                .map((sid) => ({ id: sid, ...(students?.[sid] || {}) }))
+                .filter((m) => m.nickname)
+                .sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0))
+
               return (
                 <div key={unit.unitId} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
                   <div className="border-b border-slate-200 pb-1.5 flex justify-between">
@@ -713,6 +740,22 @@ function Phase3ExecutiveQuickPanel() {
                       🏢 {unit.ministryName} <span className="font-medium text-slate-500 text-[10px]">({groupName})</span>
                     </span>
                   </div>
+                  {/* 대표 직접 지정 */}
+                  {repKey && (
+                    <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                      <span className="text-[10px] font-black text-amber-800 shrink-0">👑 대표 지정</span>
+                      <select
+                        value={currentRepId}
+                        onChange={(e) => assignRepresentative(unit.groupId, e.target.value, repKey, sessionRoles)}
+                        className="flex-1 min-w-0 text-[11px] border border-amber-300 rounded px-1.5 py-1 bg-white font-bold text-amber-900"
+                      >
+                        <option value="">— 미지정 —</option>
+                        {unitMembers.map((m) => (
+                          <option key={m.id} value={m.id}>{m.number ? `${m.number}번 ` : ''}{m.nickname}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-1 mt-1">
                     {branchRoles.map((roleDef) => {
                       const studentId = Object.entries(sessionRoles).find(([, rkey]) => rkey === roleDef.key)?.[0]

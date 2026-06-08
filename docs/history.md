@@ -6,6 +6,9 @@
 
 ---
 
+## v1.3.7 (2026-06-06) [Claude] — 기사 본문 글자수 제한 400 → 1000자
+- `ArticleEditor` 본문 `maxLength` 400→1000, 카운터/문구 갱신. `APP_BUILD` v1.3.7.
+
 ## v1.3.6 (2026-06-06) [Claude] — 기사 수정 중 내용 사라짐/되돌아감 버그 수정
 - 원인: `ArticleSection`이 실시간 구독본에서 `articleData`를 매번 새 객체로 내려보내 `ArticleEditor` 초기화 effect가 재실행 → 입력 중 내용이 서버 저장본으로 리셋.
 - 수정: `ArticleEditor`에 `initializedFor` ref — 같은 기사 id는 1회만 초기화, 이후 실시간 갱신 무시.

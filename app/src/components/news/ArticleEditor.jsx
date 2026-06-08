@@ -222,13 +222,13 @@ function ArticleEditor({ editingArticleId, articleData, onSuccess, onCancel }) {
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="본문 (200~300자 권장)"
+        placeholder="본문 (200~500자 권장, 최대 1000자)"
         rows={5}
-        maxLength={400}
+        maxLength={1000}
         className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
       />
       <p className="text-xs text-gray-400 text-right">
-        {body.length} / 400자
+        {body.length} / 1000자
       </p>
 
       <div>

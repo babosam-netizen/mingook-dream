@@ -259,18 +259,23 @@ export default function ExecutivePrepPanel({ unitId, groupId }) {
             )}
             {refList.length > 0 && (
               <ul className="space-y-1">
-                {refList.map((r) => (
+                {refList.map((r) => {
+                  // 구버전 자료는 references/{studentId} 구조라 by 필드가 없음 → id(=studentId)를 소유자로 간주
+                  const ownerId = r.by || r.id
+                  const canDelete = ownerId === myStudentId || role === 'teacher'
+                  return (
                   <li key={r.id} className="text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
                     <div className="min-w-0 flex-1">
                       <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">🔗 {r.url}</a>
                       {r.note && <span className="text-slate-500"> · {r.note}</span>}
-                      <span className="text-slate-300"> · {students?.[r.by]?.nickname || ''}</span>
+                      <span className="text-slate-300"> · {students?.[ownerId]?.nickname || ''}</span>
                     </div>
-                    {(r.by === myStudentId || role === 'teacher') && (
+                    {canDelete && (
                       <button onClick={() => removeRef(r.id)} className="shrink-0 text-[10px] text-rose-400 hover:text-rose-600" title="삭제">✕</button>
                     )}
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
           </div>

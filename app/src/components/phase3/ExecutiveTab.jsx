@@ -258,16 +258,6 @@ function ExecutiveTab({ previewMode = false }) {
               📚 집행계획 근거 자료실 — 펼치기/접기
             </summary>
             <div className="p-3">
-              {/* 정부 부처별 정책뉴스 — 우리 부처가 무슨 일을 하는지 살펴보기 */}
-              <a
-                href="https://www.korea.kr/news/ministryNewsHome.do"
-                target="_blank"
-                rel="noreferrer"
-                className="mb-3 flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 hover:bg-sky-100 transition"
-              >
-                🏛️ 정부 부처별 정책뉴스 보러 가기 (korea.kr)
-                <span className="text-[10px] font-normal text-sky-500">— 우리 부처가 실제로 무슨 일을 하는지 살펴보세요</span>
-              </a>
               {isRoleStep && (
                 <div className="mb-3">
                   <PassedLawPrepPanel billsMap={billsMap} />
@@ -280,6 +270,9 @@ function ExecutiveTab({ previewMode = false }) {
                 description={researchDescription}
                 defaultTargets={researchTargets}
                 accent="amber"
+                referenceLinks={[
+                  { label: '🏛️ 정부 부처별 정책뉴스 (korea.kr)', url: 'https://www.korea.kr/news/ministryNewsHome.do', hint: '우리 부처가 실제로 무슨 일을 하는지 살펴보세요' },
+                ]}
               />
             </div>
           </details>

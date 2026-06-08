@@ -6,6 +6,9 @@
 
 ---
 
+## v1.4.2 (2026-06-06) [Claude] — 부처별 정책뉴스(korea.kr) 링크를 기사자료수집 영역으로 이동
+- `ResearchWorkspace`에 `referenceLinks` prop 추가 → "📰 기사자료수집" 아래 표시. `ExecutiveTab`에서 korea.kr 전달, 자료실 맨 위 임시 링크 제거. `APP_BUILD` v1.4.2.
+
 ## v1.4.1 (2026-06-06) [Claude] — 워드클라우드 단어 2개씩 추가되던 한글 IME 이중입력 수정
 - `ExecutivePrepPanel` Enter 핸들러 `isComposing` 가드 + `addingRef` 재진입 잠금. `APP_BUILD` v1.4.1.
 

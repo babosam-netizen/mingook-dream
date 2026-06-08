@@ -75,6 +75,7 @@ function ResearchWorkspace({
   defaultTargets = [],
   accent = 'emerald',
   compact = false,
+  referenceLinks = [], // [{ label, url, hint }] — 기사자료수집 상단에 참고 링크로 표시
 }) {
   const roomCode = useGameStore((s) => s.roomCode)
   const role = useGameStore((s) => s.role)
@@ -358,6 +359,23 @@ function ResearchWorkspace({
           {/* B. 기사자료수집 */}
           <div className="bg-white/80 border rounded-xl p-3 space-y-3">
             <h3 className="text-sm font-bold">📰 기사자료수집</h3>
+
+            {referenceLinks.length > 0 && (
+              <div className="space-y-1">
+                {referenceLinks.map((l) => (
+                  <a
+                    key={l.url}
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 hover:bg-sky-100 transition"
+                  >
+                    {l.label}
+                    {l.hint && <span className="text-[10px] font-normal text-sky-500">— {l.hint}</span>}
+                  </a>
+                ))}
+              </div>
+            )}
 
             <div>
               <p className="text-[11px] text-gray-500 mb-1">위에서 입력한 항목 중 어느 것과 관련된 기사인가요?</p>

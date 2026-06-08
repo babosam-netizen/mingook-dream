@@ -6,6 +6,14 @@
 
 ---
 
+## v1.4.0 (2026-06-06) [Claude] — 행정부 역할중심 "① 역할 및 준비" 단계 신설
+> 역할중심 모드 전용. 공동작업 모드·기존 데이터 불변.
+- ① 라벨 "준비"→"역할 및 준비". 역할 나누기(내가 맡을래요)를 ② 초안작성에서 ① 맨 앞으로 이동. ②는 자기 초안 작성만.
+- `BranchUnitWorkspace`에 `executivePhase`('roles'/'draft'/undefined) prop — 역할 보드/초안 편집 분리. 입법·사법·대통령실 영향 없음.
+- 신규 `ExecutivePrepPanel`: 워드클라우드 브레인스토밍 + 할 일 정하기(대표) + 비슷한 시행령(대표)+참고자료(각자). 새 노드 `branchDrafts/{unitId}/prep/*`.
+- 자료실 상단 정책뉴스(korea.kr) 링크.
+- `npm run build` 통과. `APP_BUILD` v1.4.0.
+
 ## v1.3.8 (2026-06-06) [Claude] — 역할중심 시행령 작성기에 통과 법안 보기 추가
 - `ExecutiveSectionEditor` 상단에 "📜 통과된 법안 보기" 접기 패널(기본 펼침). `passedBills` 제목·본문 표시. 역할중심 모드에서 통과 법안이 안 보이던 문제 보완. `APP_BUILD` v1.3.8.
 

@@ -20,6 +20,7 @@ import ExecutiveProgressGuide from './ExecutiveProgressGuide'
 import BranchUnitBanner from './BranchUnitBanner'
 import BranchUnitWorkspace from './BranchUnitWorkspace'
 import PresidentControlPanel from './PresidentControlPanel'
+import ExecutivePrepPanel from './ExecutivePrepPanel'
 import ResearchWorkspace from '../research/ResearchWorkspace'
 
 const SESSION_ID = 'executive-default' // Phase3Page 와 동일 키
@@ -257,6 +258,16 @@ function ExecutiveTab({ previewMode = false }) {
               📚 집행계획 근거 자료실 — 펼치기/접기
             </summary>
             <div className="p-3">
+              {/* 정부 부처별 정책뉴스 — 우리 부처가 무슨 일을 하는지 살펴보기 */}
+              <a
+                href="https://www.korea.kr/news/ministryNewsHome.do"
+                target="_blank"
+                rel="noreferrer"
+                className="mb-3 flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 hover:bg-sky-100 transition"
+              >
+                🏛️ 정부 부처별 정책뉴스 보러 가기 (korea.kr)
+                <span className="text-[10px] font-normal text-sky-500">— 우리 부처가 실제로 무슨 일을 하는지 살펴보세요</span>
+              </a>
               {isRoleStep && (
                 <div className="mb-3">
                   <PassedLawPrepPanel billsMap={billsMap} />
@@ -354,6 +365,49 @@ function ExecutiveTab({ previewMode = false }) {
           </HighlightBox>
         )
       })()}
+
+      {/* 역할중심 ① 역할 및 준비: 역할 나누기(먼저) → 준비 활동(워드클라우드·할 일·비슷한 시행령) */}
+      {!previewMode && !isCollaborativeExecutive && draftUnits.length > 0 && (
+        <HighlightBox active={!anyHL || isRoleStep} anyHighlight={anyHL} scrollBlock="start">
+          <section className="bg-violet-50/50 border-2 border-violet-300 rounded-2xl p-4 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-violet-900 flex items-baseline gap-2">
+                <span className="bg-violet-600 text-white text-xs px-2 py-0.5 rounded-full">①</span>
+                역할 및 준비 — 역할 나누기 → 우리 부처가 할 일 정하기
+              </h2>
+              <p className="text-xs text-violet-700 mt-1">
+                ① 먼저 역할을 나누고(대표 포함, 교사가 확정·잠금) ② 정책뉴스·워드클라우드를 보며 ③ 우리 부처가 할 일을 정한 뒤 ④ 비슷한 시행령을 찾습니다. 초안 작성은 다음 단계(②)에서.
+              </p>
+            </div>
+            {draftUnits.map((unit) => {
+              const pGid = branchConfig?.executive?.presidentGroupId
+              const isPresidentUnit =
+                unit.unitId === 'exe-president' ||
+                (pGid && unit.groupId === pGid) ||
+                Boolean(groups?.[unit.groupId]?.name?.includes('대통령'))
+              return (
+                <div key={unit.unitId} className={`border-2 rounded-2xl overflow-hidden bg-white ${isPresidentUnit ? 'border-yellow-300' : 'border-amber-200'}`}>
+                  <div className={`px-4 py-2 ${isPresidentUnit ? 'bg-yellow-100' : 'bg-amber-100'}`}>
+                    <span className="text-sm font-bold text-amber-800">
+                      {isPresidentUnit ? '👑' : '🇰🇷'} {unit.ministryName || groups?.[unit.groupId]?.name || unit.groupId}
+                      {isPresidentUnit && <span className="ml-2 text-yellow-700 font-normal text-xs">대통령실 — 행정부 총괄</span>}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <BranchUnitWorkspace
+                      unitId={unit.unitId}
+                      branch="executive"
+                      isCollaborative={false}
+                      executivePhase="roles"
+                      prepSlot={isPresidentUnit ? null : <ExecutivePrepPanel unitId={unit.unitId} groupId={unit.groupId} />}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </section>
+        </HighlightBox>
+      )}
       </div>
       {/* === ② 예산편성 및 시행령 작성 영역 — 항상 budgetRef wrapper === */}
       <div ref={budgetRef} className="scroll-mt-4">
@@ -411,6 +465,7 @@ function ExecutiveTab({ previewMode = false }) {
                             unitId={unit.unitId}
                             branch="executive"
                             isCollaborative={isCollaborativeExecutive}
+                            executivePhase={isCollaborativeExecutive ? undefined : 'draft'}
                             renderCustomSectionEditor={(key, sec, onSave, saving, myNote, roleDef) => (
                               <ExecutiveSectionEditor
                                 sectionKey={key}

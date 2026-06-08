@@ -31,6 +31,10 @@ export default function BranchUnitWorkspace({
   renderCustomFinalViewer,
   renderCustomBudgetManager,
   children,
+  // 행정부 역할중심 전용 분할: 'roles' = 역할 보드만 / 'draft' = 초안 편집만(역할 보드 숨김) / undefined = 전체
+  executivePhase,
+  // executivePhase==='roles' 일 때 역할 보드 아래에 끼워 넣을 준비 패널(브레인스토밍·할 일·시행령 찾기)
+  prepSlot = null,
 }) {
   const STEP_LABELS = ['📝 메모 작성', '✏️ 섹션 초안', '✅ 대표 확정']
   const COLLAB_STEP_LABELS = ['🤝 공동 작업 중', '✅ 작성 완료']
@@ -1244,6 +1248,26 @@ export default function BranchUnitWorkspace({
       </div>
     )
 
+    // 행정부 역할중심 ① 단계: 역할 보드만(+ 준비 패널). 초안 편집/예산/최종은 ② 단계로 분리.
+    if (executivePhase === 'roles') {
+      return (
+        <div className="space-y-4">
+          <ExternalFeedBar unitId={unitId} />
+          {isPresidentUnit && (
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-2xl">👑</span>
+              <div>
+                <p className="font-black text-yellow-900 text-sm">대통령실 — 행정부 총괄 조정 업무</p>
+                <p className="text-xs text-yellow-800 mt-1">아래에서 역할을 먼저 나눈 뒤, 우리 정부의 공약·국정 준비를 진행합니다.</p>
+              </div>
+            </div>
+          )}
+          {renderExecutiveRoleBoard()}
+          {prepSlot}
+        </div>
+      )
+    }
+
     return (
       <div className="space-y-4">
         {/* 외부 피드 */}
@@ -1285,7 +1309,7 @@ export default function BranchUnitWorkspace({
           })}
         </div>
 
-        {renderExecutiveRoleBoard()}
+        {executivePhase !== 'draft' && renderExecutiveRoleBoard()}
 
         {/* 좌/우 2컬럼 레이아웃 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start text-left">

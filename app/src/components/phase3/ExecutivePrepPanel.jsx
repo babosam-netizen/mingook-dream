@@ -101,22 +101,33 @@ export default function ExecutivePrepPanel({ unitId, groupId }) {
   const saveTask = async () => { if (roomCode && isRep) await setAt(roomCode, `${base}/chosenTask`, { text: taskText, updatedAt: Date.now() }) }
   const saveSimilar = async () => { if (roomCode && isRep) await setAt(roomCode, `${base}/similarOrdinance`, { text: similarText, updatedAt: Date.now() }) }
 
-  // ── 참고자료 (각자) ──
-  const myRef = references?.[myStudentId] || null
+  // ── 참고자료 (각자 여러 개 추가 가능) ──
   const [refUrl, setRefUrl] = useState('')
   const [refNote, setRefNote] = useState('')
-  const [refFocused, setRefFocused] = useState(false)
-  useEffect(() => {
-    if (refFocused) return
-    setRefUrl(myRef?.url || '')
-    setRefNote(myRef?.note || '')
-  }, [myRef, refFocused])
-  const saveMyRef = async () => {
-    if (!roomCode || !myStudentId || !isMember) return
-    await setAt(roomCode, `${base}/references/${myStudentId}`, { url: refUrl.trim(), note: refNote.trim(), updatedAt: Date.now() })
+  const addingRefRef = useRef(false)
+  const addRef = async () => {
+    const url = refUrl.trim()
+    const note = refNote.trim()
+    if (!url || !note || !roomCode || !myStudentId || !isMember) return
+    if (addingRefRef.current) return
+    addingRefRef.current = true
+    setRefUrl('')
+    setRefNote('')
+    try {
+      await pushUnder(roomCode, `${base}/references`, { url, note, by: myStudentId, at: Date.now() })
+    } finally {
+      addingRefRef.current = false
+    }
+  }
+  const removeRef = async (id) => {
+    if (!roomCode) return
+    await removeAt(roomCode, `${base}/references/${id}`)
   }
   const refList = useMemo(
-    () => Object.entries(references || {}).map(([sid, r]) => ({ sid, ...r })).filter((r) => (r.url || '').trim()),
+    () => Object.entries(references || {})
+      .map(([id, r]) => ({ id, ...r }))
+      .filter((r) => (r.url || '').trim())
+      .sort((a, b) => (a.at || 0) - (b.at || 0)),
     [references]
   )
 
@@ -216,36 +227,48 @@ export default function ExecutivePrepPanel({ unitId, groupId }) {
             </div>
           )}
 
-          {/* 각자 참고자료 */}
+          {/* 각자 참고자료 (여러 개 추가 가능) */}
           <div className="space-y-2">
-            <p className="text-[11px] font-black text-amber-700">📎 내 참고자료 (각자 1개)</p>
+            <p className="text-[11px] font-black text-amber-700">📎 참고자료 (각자 여러 개 추가 가능)</p>
             {isMember && (
               <div className="space-y-1.5">
                 <input
                   value={refUrl}
-                  onFocus={() => setRefFocused(true)}
-                  onBlur={() => { setRefFocused(false); saveMyRef() }}
                   onChange={(e) => setRefUrl(e.target.value)}
                   placeholder="참고 링크 (https://...)"
                   className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-300"
                 />
-                <input
-                  value={refNote}
-                  onFocus={() => setRefFocused(true)}
-                  onBlur={() => { setRefFocused(false); saveMyRef() }}
-                  onChange={(e) => setRefNote(e.target.value)}
-                  placeholder="간단 메모 (어떤 자료인지)"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-300"
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={refNote}
+                    onChange={(e) => setRefNote(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); addRef() } }}
+                    placeholder="간단 메모 (어떤 자료인지)"
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  />
+                  <button
+                    onClick={addRef}
+                    disabled={!refUrl.trim() || !refNote.trim()}
+                    className="shrink-0 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 active:scale-95"
+                  >
+                    추가
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">링크와 메모를 모두 입력하면 [추가]를 누르세요.</p>
               </div>
             )}
             {refList.length > 0 && (
               <ul className="space-y-1">
                 {refList.map((r) => (
-                  <li key={r.sid} className="text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5">
-                    <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">🔗 {r.url}</a>
-                    {r.note && <span className="text-slate-500"> · {r.note}</span>}
-                    <span className="text-slate-300"> · {students?.[r.sid]?.nickname || ''}</span>
+                  <li key={r.id} className="text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">🔗 {r.url}</a>
+                      {r.note && <span className="text-slate-500"> · {r.note}</span>}
+                      <span className="text-slate-300"> · {students?.[r.by]?.nickname || ''}</span>
+                    </div>
+                    {(r.by === myStudentId || role === 'teacher') && (
+                      <button onClick={() => removeRef(r.id)} className="shrink-0 text-[10px] text-rose-400 hover:text-rose-600" title="삭제">✕</button>
+                    )}
                   </li>
                 ))}
               </ul>

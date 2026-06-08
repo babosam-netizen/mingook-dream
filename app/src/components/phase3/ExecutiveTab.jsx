@@ -24,6 +24,10 @@ import ExecutivePrepPanel from './ExecutivePrepPanel'
 import ResearchWorkspace from '../research/ResearchWorkspace'
 
 const SESSION_ID = 'executive-default' // Phase3Page 와 동일 키
+// 기사자료수집 상단 참고 링크 (정부 부처별 정책뉴스)
+const EXEC_RESEARCH_REF_LINKS = [
+  { label: '🏛️ 정부 부처별 정책뉴스 (korea.kr)', url: 'https://www.korea.kr/news/ministryNewsHome.do', hint: '우리 부처가 실제로 무슨 일을 하는지 살펴보세요' },
+]
 // 행정부 단계 step id
 const KNOWN_EXEC_STEPS = new Set([
   'executive-roles',
@@ -248,21 +252,16 @@ function ExecutiveTab({ previewMode = false }) {
       <BranchUnitBanner branch="executive" />
 
       <div ref={prepRef} className="scroll-mt-4">
-        {/* 자료실은 행정부 활동 시작 직후(준비·작성·토의) 단계 동안 학생에게 표시 — 후반(국무회의·예산조정·발표) 단계에서는 접이식으로 축소 */}
-        {!previewMode && role === 'student' && myGroupId && (
+        {/* 자료실 — 후반(작성·토의) 단계에서 참고용. ① 역할및준비 단계에서는 ① 흐름 안에 포함되므로 여기선 숨김 */}
+        {!previewMode && role === 'student' && myGroupId && !isRoleStep && (
           <details
-            open={isRoleStep || isBudgetStep || isDiscussStep || !isKnown}
+            open={isBudgetStep || isDiscussStep || !isKnown}
             className="rounded-2xl border border-amber-200 bg-amber-50/40"
           >
             <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50/80 rounded-2xl">
               📚 집행계획 근거 자료실 — 펼치기/접기
             </summary>
             <div className="p-3">
-              {isRoleStep && (
-                <div className="mb-3">
-                  <PassedLawPrepPanel billsMap={billsMap} />
-                </div>
-              )}
               <ResearchWorkspace
                 contextKey="phase3_executive"
                 groupId={myGroupId}
@@ -270,9 +269,7 @@ function ExecutiveTab({ previewMode = false }) {
                 description={researchDescription}
                 defaultTargets={researchTargets}
                 accent="amber"
-                referenceLinks={[
-                  { label: '🏛️ 정부 부처별 정책뉴스 (korea.kr)', url: 'https://www.korea.kr/news/ministryNewsHome.do', hint: '우리 부처가 실제로 무슨 일을 하는지 살펴보세요' },
-                ]}
+                referenceLinks={EXEC_RESEARCH_REF_LINKS}
               />
             </div>
           </details>
@@ -392,7 +389,29 @@ function ExecutiveTab({ previewMode = false }) {
                       branch="executive"
                       isCollaborative={false}
                       executivePhase="roles"
-                      prepSlot={isPresidentUnit ? null : <ExecutivePrepPanel unitId={unit.unitId} groupId={unit.groupId} />}
+                      prepSlot={isPresidentUnit ? null : (
+                        <div className="space-y-3">
+                          {/* 가결 법령 확인 + 집행계획 근거 자료실(기사 수집) — 역할 나눈 뒤 근거 기사부터 찾기 */}
+                          <details open className="rounded-2xl border border-amber-200 bg-amber-50/40">
+                            <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50/80 rounded-2xl">
+                              📚 가결 법령 확인 + 근거 기사 찾기 (자료실)
+                            </summary>
+                            <div className="p-3 space-y-3">
+                              <PassedLawPrepPanel billsMap={billsMap} />
+                              <ResearchWorkspace
+                                contextKey="phase3_executive"
+                                groupId={unit.groupId}
+                                title="집행계획 근거 자료실"
+                                description={researchDescription}
+                                defaultTargets={researchTargets}
+                                accent="amber"
+                                referenceLinks={EXEC_RESEARCH_REF_LINKS}
+                              />
+                            </div>
+                          </details>
+                          <ExecutivePrepPanel unitId={unit.unitId} groupId={unit.groupId} />
+                        </div>
+                      )}
                     />
                   </div>
                 </div>

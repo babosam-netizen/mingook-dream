@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import useGameStore from '../../store/gameStore'
 import { pushUnder, setAt, subscribe } from '../../lib/rtdb-helpers'
 import { DraftSaver } from '../../lib/draft-saver'
@@ -63,14 +63,25 @@ function ArticleEditor({ editingArticleId, articleData, onSuccess, onCancel }) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
+  // 수정 모드 진입 시 폼을 '한 번만' 초기화한다.
+  // articleData 는 실시간 구독본에서 매번 새 객체로 내려오므로(articles 노드가 바뀔 때마다),
+  // 매 변경마다 초기화하면 사용자가 입력 중인 내용이 서버 저장본으로 되돌아가거나 사라진다.
+  const initializedFor = useRef(null)
   useEffect(() => {
-    if (editingArticleId && articleData) {
+    if (editingArticleId) {
+      // 같은 기사 id 에 대해 이미 초기화했다면, 이후 실시간 갱신으로 폼을 덮어쓰지 않는다.
+      if (initializedFor.current === editingArticleId) return
+      if (!articleData) return // 구독 지연으로 잠깐 비어 있을 때는 기존 입력 유지
+      initializedFor.current = editingArticleId
       setHeadline(articleData.headline || '')
       setBody(articleData.body || '')
       setPerspective(articleData.perspective || 'neutral')
       setArticleNature(articleData.articleNature || 'news')
       setTarget(articleData.target || 'general')
     } else {
+      // 새 기사 작성 모드: 폼 비우기 (한 번)
+      if (initializedFor.current === null) return
+      initializedFor.current = null
       setHeadline('')
       setBody('')
       setPerspective('neutral')

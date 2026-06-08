@@ -170,10 +170,10 @@ function Phase3ExecutiveQuickPanel() {
   let stageLabel, nextHint
   const STAGE_INFO = [
     [
-      isCollaborative ? '① 공동 작업 준비' : '① 역할 배정·임무 확인',
+      isCollaborative ? '① 공동 작업 준비' : '① 역할 및 준비',
       isCollaborative
         ? '학생들이 부처별로 모여 함께 집행계획·시행령·예산안을 작성하도록 안내하세요.'
-        : '학생들이 역할카드와 도움카드를 확인하도록 안내하세요.',
+        : '역할을 먼저 나눈 뒤(대표 포함), 근거 기사·워드클라우드로 우리 부처가 할 일을 정하도록 안내하세요. 아래에서 역할 배정을 확인하고 잠글 수 있습니다.',
     ],
     ['② 정책 및 예산 초안 작성', isAllSubmitted ? `모든 부처(${submitted}/${totalGroups})가 초안 작성을 마쳤습니다.` : `각 부처가 정책 초안을 제출(공개)할 때까지 대기 (${submitted}/${totalGroups} 제출)`],
     ['③ 예산 초안 검토', '아래 [🎬 전광판 띄우기] 버튼을 눌러 각 부처 예산 청구액을 교실 TV로 방송하세요.'],
@@ -193,7 +193,7 @@ function Phase3ExecutiveQuickPanel() {
   }
 
   const stages = [
-    { idx: 0, label: isCollaborative ? '준비' : '역할' },
+    { idx: 0, label: isCollaborative ? '준비' : '역할및준비' },
     { idx: 1, label: '초안작성' },
     { idx: 2, label: '예산검토' },
     { idx: 3, label: '토의·평가' },
@@ -696,6 +696,16 @@ function Phase3ExecutiveQuickPanel() {
               const memberNotes = draft.memberNotes || {}
               const sections = draft.sections || {}
 
+              // ① 역할및준비 단계 산출물: 워드클라우드 + 우리 부서 할 일
+              const prep = draft.prep || {}
+              const wordCounts = {}
+              Object.values(prep.brainstorm || {}).forEach((w) => {
+                const word = (w?.word || '').trim()
+                if (word) wordCounts[word] = (wordCounts[word] || 0) + 1
+              })
+              const prepWords = Object.entries(wordCounts).map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count)
+              const chosenTaskText = prep.chosenTask?.text?.trim() || ''
+
               return (
                 <div key={unit.unitId} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
                   <div className="border-b border-slate-200 pb-1.5 flex justify-between">
@@ -717,26 +727,57 @@ function Phase3ExecutiveQuickPanel() {
                       const isSecWriting = (hasFields || hasBudgets) && !isSecDone
 
                       return (
-                        <div key={roleDef.key} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded px-2 py-1 flex-1 min-w-[120px]">
-                          <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">
-                            {roleDef.emoji} {roleDef.label}
-                          </span>
-                          <span className="text-[10px] text-gray-600 truncate flex-1">
-                            {student ? `${student.nickname}` : '❌ 미배정'}
-                          </span>
-                          {student && roleDef.assignedSection && (
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-black shrink-0 ${
-                              isSecDone ? 'bg-emerald-100 text-emerald-700' :
-                              isSecWriting ? 'bg-amber-100 text-amber-700' :
-                              'bg-gray-100 text-gray-400'
-                            }`}>
-                              {isSecDone ? '초안완료' : isSecWriting ? '작성중' : '작성대기'}
+                        <div key={roleDef.key} className={`bg-white border rounded px-2 py-1.5 flex-1 min-w-[150px] space-y-0.5 ${roleDef.isRepresentative ? 'border-amber-300' : 'border-slate-200'}`}>
+                          {/* 1줄: 역할명 + 대표 배지 */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-slate-500 truncate">{roleDef.emoji} {roleDef.label}</span>
+                            {roleDef.isRepresentative && (
+                              <span className="text-[8px] px-1 py-px rounded-full bg-amber-100 text-amber-700 font-black shrink-0 border border-amber-200">대표</span>
+                            )}
+                          </div>
+                          {/* 2줄: 배정된 학생 이름(크게) + 상태 배지 */}
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className={`text-xs font-black truncate ${student ? 'text-indigo-700' : 'text-rose-400'}`}>
+                              {student ? `${student.number ? `${student.number}번 ` : ''}${student.nickname}` : '❌ 미배정'}
                             </span>
-                          )}
+                            {student && roleDef.assignedSection && (
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-black shrink-0 ${
+                                isSecDone ? 'bg-emerald-100 text-emerald-700' :
+                                isSecWriting ? 'bg-amber-100 text-amber-700' :
+                                'bg-gray-100 text-gray-400'
+                              }`}>
+                                {isSecDone ? '초안완료' : isSecWriting ? '작성중' : '작성대기'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
                   </div>
+
+                  {/* ① 역할및준비 산출물: 워드클라우드 + 우리 부서 할 일 */}
+                  {(prepWords.length > 0 || chosenTaskText) && (
+                    <div className="mt-1 pt-1.5 border-t border-slate-200 space-y-1.5">
+                      {prepWords.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 mb-0.5">💭 할 수 있는 일 (브레인스토밍)</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            {prepWords.map((w) => (
+                              <span key={w.word} style={{ fontSize: `${Math.min(20, 11 + w.count * 3)}px`, lineHeight: 1.15 }} className="font-black text-indigo-700">
+                                {w.word}{w.count > 1 && <span className="text-[9px] text-indigo-400 align-super">×{w.count}</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {chosenTaskText && (
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 mb-0.5">🎯 우리 부서 입법 관련 할 일</p>
+                          <p className="text-[11px] text-slate-700 whitespace-pre-wrap bg-white border border-slate-100 rounded px-2 py-1">{chosenTaskText}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             }

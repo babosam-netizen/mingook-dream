@@ -502,6 +502,16 @@ function ExecutiveTab({ previewMode = false }) {
                       <div className="p-4">
                         {/* 대통령실 PresidentControlPanel은 역할 단계(prepSlot)에서만 표시.
                             초안작성 단계에서는 중복 제거 — 역할 단계에서 이미 작성한 내용 그대로 유지됨. */}
+                        {isPresidentUnit && (
+                          <details open className="rounded-2xl border border-yellow-300 bg-yellow-50/40 mb-3">
+                            <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-yellow-900 hover:bg-yellow-50/80 rounded-2xl">
+                              📜 통과 법안 확인
+                            </summary>
+                            <div className="p-3">
+                              <PassedLawPrepPanel billsMap={billsMap} />
+                            </div>
+                          </details>
+                        )}
                         <BranchUnitWorkspace
                             unitId={unit.unitId}
                             branch="executive"

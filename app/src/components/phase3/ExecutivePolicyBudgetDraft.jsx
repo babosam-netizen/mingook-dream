@@ -1018,14 +1018,15 @@ export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, savin
 
   return (
     <div className="space-y-4">
-      {/* 0. 통과(가결)된 법안 보기 — 시행령은 이 법을 집행하기 위한 것이므로 작성 중 참고 */}
+      {/* 0. 통과(가결)된 법안 — 항상 펼쳐서 상단에 표시. 시행령은 이 법을 집행하기 위한 것. */}
       {passedBills.length > 0 && (
-        <details open className="bg-indigo-50/60 border border-indigo-200 rounded-xl p-3 text-left">
-          <summary className="cursor-pointer text-sm font-black text-indigo-900">
-            📜 통과된 법안 보기 ({passedBills.length}건)
-            <span className="ml-1 text-[11px] font-bold text-indigo-500">— 시행령은 이 법을 실제로 집행하기 위한 규칙이에요</span>
-          </summary>
-          <div className="mt-2 space-y-2">
+        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-3 text-left">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-black text-indigo-900">📜 우리 부서 관련 통과 법안</span>
+            <span className="text-[11px] font-bold text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full">{passedBills.length}건</span>
+            <span className="text-[11px] text-indigo-600">— 이 법을 집행하기 위한 시행령을 작성하세요</span>
+          </div>
+          <div className="space-y-2">
             {passedBills.map((bill) => (
               <div key={bill.id} className="bg-white border border-indigo-100 rounded-lg p-2.5">
                 <p className="text-xs font-black text-indigo-950">⚖️ {bill.title || '제목 없음'}</p>
@@ -1035,7 +1036,7 @@ export function ExecutiveSectionEditor({ roleDef, sectionKey, sec, onSave, savin
               </div>
             ))}
           </div>
-        </details>
+        </div>
       )}
 
       {/* 1. 미션 가이드 및 이전 메모 */}

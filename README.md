@@ -158,10 +158,12 @@ Firebase Console → Realtime Database → 규칙 탭에 아래 내용 붙여넣
 
 ## 라이선스
 
+© 2026 [babosam](https://babosam.net)
+
 이 프로젝트는 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ko) 라이선스를 따릅니다.
 
 - ✅ 자유롭게 사용, 수정, 배포 가능
-- ✅ 수정 후 배포 시 동일 라이선스 적용
+- ✅ 수정 후 배포 시 동일 라이선스 적용 (저작자 표시 필수)
 - ❌ 상업적 이용 금지
 
 ---

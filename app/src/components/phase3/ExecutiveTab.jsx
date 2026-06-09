@@ -389,7 +389,38 @@ function ExecutiveTab({ previewMode = false }) {
                       branch="executive"
                       isCollaborative={false}
                       executivePhase="roles"
-                      prepSlot={isPresidentUnit ? null : (
+                      prepSlot={isPresidentUnit ? (
+                        <div className="space-y-3">
+                          {/* 대통령실 전용 — 가결 법안 확인 + 공약·지시사항 + 자료 수집 */}
+                          <details open className="rounded-2xl border border-yellow-300 bg-yellow-50/40">
+                            <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-yellow-900 hover:bg-yellow-50/80 rounded-2xl">
+                              📜 통과 법안 확인 (공약과 연결할 법안 고르기)
+                            </summary>
+                            <div className="p-3">
+                              <PassedLawPrepPanel billsMap={billsMap} />
+                            </div>
+                          </details>
+                          {/* 공약 선택 + 부처별 업무지시 + 국무회의 대본 */}
+                          <PresidentControlPanel groupId={unit.groupId} />
+                          {/* 관련 뉴스·시행령 자료 수집 (모둠원 각자 올릴 수 있음) */}
+                          <details open className="rounded-2xl border border-yellow-300 bg-yellow-50/40">
+                            <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-yellow-900 hover:bg-yellow-50/80 rounded-2xl">
+                              🔍 관련 뉴스·시행령 자료 수집
+                            </summary>
+                            <div className="p-3">
+                              <ResearchWorkspace
+                                contextKey="phase3_executive"
+                                groupId={unit.groupId}
+                                title="공약 실현 근거 자료실"
+                                description={researchDescription}
+                                defaultTargets={researchTargets}
+                                accent="amber"
+                                referenceLinks={EXEC_RESEARCH_REF_LINKS}
+                              />
+                            </div>
+                          </details>
+                        </div>
+                      ) : (
                         <div className="space-y-3">
                           {/* 가결 법령 확인 + 집행계획 근거 자료실(기사 수집) — 역할 나눈 뒤 근거 기사부터 찾기 */}
                           <details open className="rounded-2xl border border-amber-200 bg-amber-50/40">

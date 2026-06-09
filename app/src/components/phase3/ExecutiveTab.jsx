@@ -500,10 +500,8 @@ function ExecutiveTab({ previewMode = false }) {
                         )}
                       </div>
                       <div className="p-4">
-                        {/* 대통령실도 일반 부처와 동일한 BranchUnitWorkspace 엔진을 사용한다.
-                            대통령실 전용성은 executive_president 역할 데이터(시행령 요소별 + 공약 프레이밍),
-                            isPresidentUnit 배너/색상, 그리고 상단 PresidentControlPanel(공약 선택·업무지시·국무회의 대본)로 구분한다. (v1.3.3 개편) */}
-                        {isPresidentUnit && <PresidentControlPanel groupId={unit.groupId} />}
+                        {/* 대통령실 PresidentControlPanel은 역할 단계(prepSlot)에서만 표시.
+                            초안작성 단계에서는 중복 제거 — 역할 단계에서 이미 작성한 내용 그대로 유지됨. */}
                         <BranchUnitWorkspace
                             unitId={unit.unitId}
                             branch="executive"

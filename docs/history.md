@@ -6,6 +6,9 @@
 
 ---
 
+## v1.4.8 (2026-06-07) [Claude] — ② 초안작성 자료실: 입력창 제거, 준비 요약(읽기전용)으로 교체
+- 후반 단계 상단 자료실 입력창 제거. 신규 `ExecutivePrepSummary`: 수집 자료(ResearchReferencePanel) + 대표 할 일(chosenTask) + 비슷한 시행령·참고자료(읽기전용). `APP_BUILD` v1.4.8.
+
 ## v1.4.7 (2026-06-07) [Claude] — 역할중심 ② 초안작성 단계 상단에 통과 법안 확인 추가
 - ② 초안작성 섹션 상단에 `PassedLawPrepPanel` 접기 패널 추가(①과 동일). `APP_BUILD` v1.4.7.
 

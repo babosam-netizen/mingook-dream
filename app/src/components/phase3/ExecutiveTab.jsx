@@ -21,6 +21,7 @@ import BranchUnitBanner from './BranchUnitBanner'
 import BranchUnitWorkspace from './BranchUnitWorkspace'
 import PresidentControlPanel from './PresidentControlPanel'
 import ExecutivePrepPanel from './ExecutivePrepPanel'
+import ExecutivePrepSummary from './ExecutivePrepSummary'
 import ResearchWorkspace from '../research/ResearchWorkspace'
 
 const SESSION_ID = 'executive-default' // Phase3Page 와 동일 키
@@ -238,6 +239,13 @@ function ExecutiveTab({ previewMode = false }) {
     groups?.[myGroupId]?.name?.includes('대통령')
   )
 
+  // 내 모둠(부처)의 유닛 — 준비 요약(prep)이 unitId 기준이라 필요
+  const myUnit = useMemo(
+    () => exeUnits.find((u) => u.groupId === myGroupId) || null,
+    [exeUnits, myGroupId]
+  )
+  const myMinistryName = myUnit?.ministryName || groups?.[myGroupId]?.name || '우리 부처'
+
   const researchTargets = isPresidentGroup
     ? ['대통령 공약 및 국정과제', '부처별 정책 쟁점 및 갈등', '정부 예산 배정 현황', '시민 여론 및 소통 사례']
     : ['필요한 예산·물가 정보', '예상되는 반대 의견', '과거 정책 실패 사례', '행정 인력·시간 계산']
@@ -252,24 +260,21 @@ function ExecutiveTab({ previewMode = false }) {
       <BranchUnitBanner branch="executive" />
 
       <div ref={prepRef} className="scroll-mt-4">
-        {/* 자료실 — 후반(작성·토의) 단계에서 참고용. ① 역할및준비 단계에서는 ① 흐름 안에 포함되므로 여기선 숨김 */}
+        {/* 자료실 — 후반(작성·토의) 단계에서는 읽기 전용 요약(수집 자료·대표 정리)만. 입력은 ① 역할및준비에서. */}
         {!previewMode && role === 'student' && myGroupId && !isRoleStep && (
           <details
             open={isBudgetStep || isDiscussStep || !isKnown}
             className="rounded-2xl border border-amber-200 bg-amber-50/40"
           >
             <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50/80 rounded-2xl">
-              📚 집행계획 근거 자료실 — 펼치기/접기
+              📚 집행계획 근거 자료실 — 수집 자료·준비 내용 보기
             </summary>
             <div className="p-3">
-              <ResearchWorkspace
-                contextKey="phase3_executive"
+              <ExecutivePrepSummary
+                unitId={myUnit?.unitId}
                 groupId={myGroupId}
-                title="집행계획 근거 자료실"
-                description={researchDescription}
-                defaultTargets={researchTargets}
-                accent="amber"
-                referenceLinks={EXEC_RESEARCH_REF_LINKS}
+                isPresident={isPresidentGroup}
+                ministryName={myMinistryName}
               />
             </div>
           </details>

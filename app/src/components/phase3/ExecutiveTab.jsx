@@ -466,6 +466,18 @@ function ExecutiveTab({ previewMode = false }) {
                 : '🎭 역할중심 모드는 각 학생이 맡은 시행령 조문과 실행 예산 항목을 저장하고, 저장본이 아래 초안 작업판에 모입니다. 대표는 이를 보며 최종 정책보고서를 정리합니다.'}
             </p>
 
+            {/* 초안 작성 단계에서도 상단에 통과 법안 확인 — 시행령은 이 법을 집행하기 위한 것 */}
+            {!isCollaborativeExecutive && !previewMode && (
+              <details open className="mb-3 rounded-2xl border border-indigo-200 bg-indigo-50/40">
+                <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-indigo-900 hover:bg-indigo-50/80 rounded-2xl">
+                  📜 통과된 법안 확인 — 시행령은 이 법을 집행하기 위한 규칙이에요
+                </summary>
+                <div className="p-3">
+                  <PassedLawPrepPanel billsMap={billsMap} />
+                </div>
+              </details>
+            )}
+
             {draftUnits.length > 0 ? (
               <div className="space-y-4">
                 {draftUnits.map((unit) => {

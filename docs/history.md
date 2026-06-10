@@ -6,6 +6,9 @@
 
 ---
 
+## v1.5.0 (2026-06-07) [Claude] — 교사 제출물 열람에 "🕒 시간별 모아보기" 타임라인 탭 추가
+- 신규 `SubmissionTimeline`: 여러 노드를 한번에 구독해 시간·유형·작성자·요약·본문으로 정규화, 날짜별 섹션+날짜 필터 칩, 클릭 시 본문 펼침. `SubmissionMonitor` 첫 탭. `APP_BUILD` v1.5.0.
+
 ## v1.4.8 (2026-06-07) [Claude] — ② 초안작성 자료실: 입력창 제거, 준비 요약(읽기전용)으로 교체
 - 후반 단계 상단 자료실 입력창 제거. 신규 `ExecutivePrepSummary`: 수집 자료(ResearchReferencePanel) + 대표 할 일(chosenTask) + 비슷한 시행령·참고자료(읽기전용). `APP_BUILD` v1.4.8.
 

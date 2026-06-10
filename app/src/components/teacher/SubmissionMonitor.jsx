@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe } from '../../lib/rtdb-helpers'
 import SubmissionDetailModal from './SubmissionDetailModal'
+import SubmissionTimeline from './SubmissionTimeline'
 
 const TABS = [
+  { id: 'timeline', label: '🕒 시간별 모아보기', path: null },
   { id: 'poster', label: '🖼️ 캠페인 포스터', path: 'groups' },
   { id: 'article', label: '📰 여론판 기사', path: 'articles' },
   { id: 'candidate', label: '🎤 후보 등록', path: 'candidates' },
@@ -32,7 +34,7 @@ export default function SubmissionMonitor() {
   useEffect(() => {
     if (!roomCode) return
     const currentTab = TABS.find(t => t.id === activeTab)
-    if (!currentTab) return
+    if (!currentTab || !currentTab.path) return // 시간별 탭은 자체 구독
 
     const u = subscribe(roomCode, currentTab.path, (d) => setDataMap(d || {}))
     return () => u?.()
@@ -99,8 +101,10 @@ export default function SubmissionMonitor() {
         ))}
       </div>
 
+      {activeTab === 'timeline' && <SubmissionTimeline />}
+
       {/* 보조 필터 — 토론 주제(세션)별 */}
-      {supportsTopicFilter && topicOptions.length > 0 && (
+      {activeTab !== 'timeline' && supportsTopicFilter && topicOptions.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap -mt-1">
           <span className="text-[10px] font-black text-slate-400 mr-1">토론 주제</span>
           <button
@@ -130,6 +134,7 @@ export default function SubmissionMonitor() {
       )}
 
       {/* 목록 영역 */}
+      {activeTab !== 'timeline' && (
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[400px]">
         {visibleItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-300 italic">
@@ -149,6 +154,7 @@ export default function SubmissionMonitor() {
           ))
         )}
       </div>
+      )}
 
       {/* 이미지 확대 모달 */}
       {viewingPoster && (

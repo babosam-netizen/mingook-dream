@@ -6,6 +6,10 @@
 
 ---
 
+## v1.5.2 (2026-06-07) [Claude] — 공동작업 제출 후 임시저장이 제출상태를 'saved'로 강등하던 버그 수정
+- 증상: 공동작업 제출했는데 교사화면 '작성중'(demo24 마음의집). 원인: 동시편집 중 제출 직후 임시/구역 저장이 로컬 상태 기준으로 status를 'saved'로 강등.
+- 수정: `handleSaveDraft`/`handleSavePart`에서 `getOnce`로 DB 현재 status 확인 → 제출 상태면 저장 차단. `APP_BUILD` v1.5.2.
+
 ## v1.5.1 (2026-06-07) [Claude] — 행정부 초안 제출을 교사가 취소 → 학생 재제출 가능
 - 공동작업/역할중심 공통. 빠른제어 부처 카드에 "↩️ 제출 취소" 버튼. `cancelSubmission`: finalDoc 'draft' + policies 'saved'(내용 보존). `APP_BUILD` v1.5.1.
 

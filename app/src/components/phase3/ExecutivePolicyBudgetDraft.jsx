@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import useGameStore from '../../store/gameStore'
-import { subscribe, setAt, updateAt, removeAt } from '../../lib/rtdb-helpers'
+import { subscribe, setAt, updateAt, removeAt, getOnce } from '../../lib/rtdb-helpers'
 import { DraftSaver } from '../../lib/draft-saver'
 import ResearchReferencePanel from '../research/ResearchReferencePanel'
 import {
@@ -1986,6 +1986,12 @@ export function ExecutivePolicyBudgetDraft({ groupId }) {
     if (!roomCode || !unitId) return
     setSaving(true)
     try {
+      // 이미 최종 제출된 정책은 임시저장이 제출 상태를 강등하지 못하게 막는다(공동작업 동시편집 경합 방지).
+      const livePolicy = await getOnce(roomCode, `policies/${groupId}`)
+      if (['submitted', 'requested', 'adjusted', 'final'].includes(livePolicy?.status)) {
+        alert('이미 최종 제출된 정책입니다.\n다시 수정하려면 선생님께 [제출 취소]를 요청하세요.')
+        return
+      }
       const content = buildDraftContent({
         savedSections: finalDoc?.content?.savedSections || {},
       })
@@ -2009,6 +2015,12 @@ export function ExecutivePolicyBudgetDraft({ groupId }) {
     if (!roomCode || !unitId || savingPart) return
     setSavingPart(partKey)
     try {
+      // 이미 최종 제출된 정책은 구역 저장이 제출 상태를 강등하지 못하게 막는다.
+      const livePolicy = await getOnce(roomCode, `policies/${groupId}`)
+      if (['submitted', 'requested', 'adjusted', 'final'].includes(livePolicy?.status)) {
+        alert('이미 최종 제출된 정책입니다.\n다시 수정하려면 선생님께 [제출 취소]를 요청하세요.')
+        return
+      }
       const content = buildDraftContent({
         savedSections: {
           ...(finalDoc?.content?.savedSections || {}),

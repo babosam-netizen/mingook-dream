@@ -6,6 +6,9 @@
 
 ---
 
+## v1.5.1 (2026-06-07) [Claude] — 행정부 초안 제출을 교사가 취소 → 학생 재제출 가능
+- 공동작업/역할중심 공통. 빠른제어 부처 카드에 "↩️ 제출 취소" 버튼. `cancelSubmission`: finalDoc 'draft' + policies 'saved'(내용 보존). `APP_BUILD` v1.5.1.
+
 ## v1.5.0 (2026-06-07) [Claude] — 교사 제출물 열람에 "🕒 시간별 모아보기" 타임라인 탭 추가
 - 신규 `SubmissionTimeline`: 여러 노드를 한번에 구독해 시간·유형·작성자·요약·본문으로 정규화, 날짜별 섹션+날짜 필터 칩, 클릭 시 본문 펼침. `SubmissionMonitor` 첫 탭. `APP_BUILD` v1.5.0.
 

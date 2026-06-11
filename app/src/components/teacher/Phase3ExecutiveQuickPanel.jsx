@@ -98,6 +98,21 @@ function Phase3ExecutiveQuickPanel() {
     }
   }
 
+  // 초안 제출 취소 — 공동작업/역할중심 공통. finalDoc 잠금 해제 + policies 를 'saved'로 되돌려 다시 편집·제출 가능.
+  const cancelSubmission = async (unit) => {
+    if (!roomCode || !unit) return
+    const name = unit.ministryName || groups?.[unit.groupId]?.name || '이 부처'
+    if (!confirm(`${name}의 초안 제출을 취소할까요?\n학생들이 다시 편집하고 제출할 수 있게 됩니다. (작성 내용은 그대로 보존됩니다)`)) return
+    const updates = {}
+    updates[`branchDrafts/${unit.unitId}/finalDoc/status`] = 'draft'
+    if (policiesMap?.[unit.groupId]) updates[`policies/${unit.groupId}/status`] = 'saved'
+    try {
+      await updateAt(roomCode, '', updates)
+    } catch (err) {
+      alert('제출 취소 에러: ' + err.message)
+    }
+  }
+
   const resetAllRoles = async () => {
     if (!roomCode || !groups) return
     if (!confirm('🚨 모든 행정부 모둠원 역할 지정을 정말 초기화(배정 취소)할까요?')) return
@@ -703,6 +718,14 @@ function Phase3ExecutiveQuickPanel() {
                       </span>
                     </p>
                   </div>
+                  {['submitted', 'requested', 'adjusted', 'final'].includes(status) && (
+                    <button
+                      onClick={() => cancelSubmission(unit)}
+                      className="w-full mt-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition"
+                    >
+                      ↩️ 제출 취소 (다시 제출 허용)
+                    </button>
+                  )}
                 </div>
               )
             } else {
@@ -820,6 +843,14 @@ function Phase3ExecutiveQuickPanel() {
                         </div>
                       )}
                     </div>
+                  )}
+                  {(draft.finalDoc?.status === 'locked' || ['submitted', 'requested', 'adjusted', 'final'].includes(policiesMap?.[unit.groupId]?.status)) && (
+                    <button
+                      onClick={() => cancelSubmission(unit)}
+                      className="w-full mt-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition"
+                    >
+                      ↩️ 제출 취소 (다시 제출 허용)
+                    </button>
                   )}
                 </div>
               )

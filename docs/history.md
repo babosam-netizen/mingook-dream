@@ -6,6 +6,9 @@
 
 ---
 
+## v1.6.2 (2026-06-07) [Claude] — 행정부 초안 일괄 제출을 단계 전환 시 '자동' 실행으로
+- 버튼만이라 안 누르면 'saved'로 남아 평가 막히던 문제. `Phase3ExecutiveQuickPanel`에 stage≥2 진입 시 `bulkSubmitDrafts` 1회 자동 실행(마커 `executiveBulkSubmitDone`). 수동 버튼 유지. `APP_BUILD` v1.6.2.
+
 ## v1.6.1 (2026-06-07) [Claude] — 행정부 토의·평가: 작성분 일괄 제출(마감) + 평가 중 토의화면 즉시 수정·재제출
 - [A] `Phase3ExecutiveQuickPanel` "📥 모든 부처 초안 일괄 제출"(`bulkSubmitDrafts`, stage 2/3) — 작성분 있는 미제출 부처 모두 submitted 마감(policies→finalDoc→섹션 병합 순).
 - [B] `ExecutivePolicyDiscussionList` 우리 모둠 카드 "✏️ 댓글 보고 수정하기" → 잠금 해제 후 `ExecutivePolicyBudgetDraft` 인라인 편집·재제출.

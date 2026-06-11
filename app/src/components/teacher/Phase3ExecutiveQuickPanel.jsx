@@ -188,14 +188,16 @@ function Phase3ExecutiveQuickPanel() {
   const [commentsMap, setCommentsMap] = useState({})
   const [debateSessions, setDebateSessions] = useState({})
   const [draftsMap, setDraftsMap] = useState({})
-  
+  const [bulkSubmitMarker, setBulkSubmitMarker] = useState(false)
+
   useEffect(() => {
     if (!roomCode) return
     const u1 = subscribe(roomCode, 'policies', (d) => setPoliciesMap(d || {}))
     const u2 = subscribe(roomCode, 'executivePolicyComments', (d) => setCommentsMap(d || {}))
     const u3 = subscribe(roomCode, 'debateSessions', (d) => setDebateSessions(d || {}))
     const u4 = subscribe(roomCode, 'branchDrafts', (d) => setDraftsMap(d || {}))
-    return () => { u1?.(); u2?.(); u3?.(); u4?.() }
+    const u5 = subscribe(roomCode, 'executiveBulkSubmitDone', (d) => setBulkSubmitMarker(!!d))
+    return () => { u1?.(); u2?.(); u3?.(); u4?.(); u5?.() }
   }, [roomCode])
 
   const wf = useWorkflow()
@@ -205,6 +207,23 @@ function Phase3ExecutiveQuickPanel() {
   // 실제 행정 step 일 때만 stage 사용. 그 외(입법/기사/여론조사)는 명시적으로 '대기' 상태 표시.
   const isExecStep = typeof stepId === 'string' && stepId.startsWith('executive-')
   let stage = isExecStep ? (wfStage ?? 0) : -1
+
+  // 초안작성(stage1) 다음 단계로 넘어가면 작성분을 1회 자동 일괄 제출 → 평가 대상에 올림.
+  // 마커(executiveBulkSubmitDone)로 1회만 실행. 초안작성 단계로 돌아오면 마커 해제(다음 전환 시 재실행).
+  useEffect(() => {
+    if (!roomCode) return
+    if (stage <= 1) {
+      if (bulkSubmitMarker) setAt(roomCode, 'executiveBulkSubmitDone', false)
+      return
+    }
+    if (stage >= 2 && !bulkSubmitMarker) {
+      const dataReady = Object.keys(policiesMap || {}).length > 0 || Object.keys(draftsMap || {}).length > 0
+      if (!dataReady) return
+      setAt(roomCode, 'executiveBulkSubmitDone', true)
+      bulkSubmitDrafts(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, bulkSubmitMarker, policiesMap, draftsMap, roomCode])
 
   // 이전/다음 단계 라벨 (실제 step 의 studentLabel 사용)
   const prevStep = stepIndex > 0 ? wf.steps[stepIndex - 1] : null

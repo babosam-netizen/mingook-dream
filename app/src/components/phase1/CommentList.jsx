@@ -57,7 +57,7 @@ const VERDICT_RATING_LABELS = [
   { key: 'logic',       label: '설득' },
 ]
 
-function CommentList({ targetType, targetId, targetGroupId, readOnly = false, allowReplies = false }) {
+function CommentList({ targetType, targetId, targetGroupId, readOnly = false, allowReplies = false, ownerStudentId = null }) {
   const roomCode = useGameStore((s) => s.roomCode)
   const role = useGameStore((s) => s.role)
   const myStudentId = useGameStore((s) => s.myStudentId)
@@ -75,7 +75,11 @@ function CommentList({ targetType, targetId, targetGroupId, readOnly = false, al
     return null
   }, [groups, myStudentId])
 
-  const isMyGroup = !!targetGroupId && targetGroupId === myGroupId
+  // 소유자(자기 자료) 판정 — 모둠 자료면 모둠으로, 개인 자료(정리글 등)면 ownerStudentId로 판정
+  const isOwner = ownerStudentId
+    ? ownerStudentId === myStudentId
+    : (!!targetGroupId && targetGroupId === myGroupId)
+  const isMyGroup = isOwner
 
   const [allComments, setAllComments] = useState({})
   const [body, setBody] = useState('')

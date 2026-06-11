@@ -459,7 +459,7 @@ export default function CanvaCardNewsStep() {
     return processedActs
   }, [essays, posters, candidates, supports, articles, branchData, links, polls, pollReasons, electionVotes, billVotes, juryVotes, debateSessions, commentsMap, reflectionsMap, myStudentId, myGroupId, groups])
 
-  // 상위 별점 활동 4개 계산
+  // 별점 준 활동 전체 — 별점 높은 순으로 정렬(개수 제한 없음, 스크롤로 표시)
   const topActivities = useMemo(() => {
     const scored = activities.filter((act) => (ratings[act.key] || 0) > 0)
     return scored
@@ -468,7 +468,6 @@ export default function CanvaCardNewsStep() {
         score: ratings[act.key],
       }))
       .sort((a, b) => b.score - a.score)
-      .slice(0, 4)
   }, [activities, ratings])
 
   const handleSave = async () => {
@@ -509,11 +508,11 @@ export default function CanvaCardNewsStep() {
           {topActivities.length > 0 && (
             <div className="bg-yellow-50/70 border border-yellow-200 rounded-2xl p-4 space-y-3">
               <div className="border-b border-yellow-250 pb-2">
-                <h3 className="font-black text-yellow-800 text-sm">⭐ 내가 높이 평가한 활동들</h3>
-                <p className="text-[10px] text-gray-500 mt-0.5">제목을 누르면 내용이 펼쳐집니다. 이 활동들을 참고하여 카드뉴스를 채워보세요!</p>
+                <h3 className="font-black text-yellow-800 text-sm">⭐ 내가 높이 평가한 활동들 <span className="text-[10px] font-bold text-yellow-600">({topActivities.length}개 · 별점순)</span></h3>
+                <p className="text-[10px] text-gray-500 mt-0.5">별점 높은 순으로 모두 표시됩니다. 제목을 누르면 내용이 펼쳐져요. 스크롤하며 참고하세요!</p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                 {topActivities.map((act) => {
                   const isExpanded = expandedKey === act.key
                   return (

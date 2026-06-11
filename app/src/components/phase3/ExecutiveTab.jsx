@@ -600,9 +600,29 @@ function ExecutiveTab({ previewMode = false }) {
                 👩‍🏫 학생 화면에서는 장관(또는 모둠원)이 예산편성과 시행령을 작성합니다.
               </div>
             ) : isPresidentGroup && isCollaborativeExecutive ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
-                👑 <b>대통령실 모둠 안내</b>: 공동작업 모드에서는 별도의 부처 시행령/예산안 초안을 작성하지 않습니다. 
-                위의 <b>자료실</b>에서 국정과제 자료를 조사하며, 다른 부처의 초안 작성을 대기하거나 국무회의를 준비해 주세요.
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3 text-xs text-yellow-900">
+                  👑 <b>대통령실 — 국무회의 준비</b>: 공동작업 모드에서는 부처 시행령을 직접 쓰지 않습니다. 다른 부처가 시행령을 만드는 동안, 아래에서 <b>국무회의 대본·부처 업무지시·관련 자료</b>를 준비하세요. 여기서 만든 <b>국무회의 대본</b>은 나중에 토론도구(국무회의)에 그대로 올라갑니다.
+                </div>
+                {/* 공약 선택 · 부처 업무지시 · 국무회의 대본 작성 */}
+                <PresidentControlPanel groupId={myGroupId} />
+                {/* 국무회의 준비 자료 올리기 (편집 가능) */}
+                <details open className="rounded-2xl border border-amber-200 bg-amber-50/40">
+                  <summary className="cursor-pointer px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50/80 rounded-2xl">
+                    📎 국무회의 준비 자료 올리기
+                  </summary>
+                  <div className="p-3">
+                    <ResearchWorkspace
+                      contextKey="phase3_executive"
+                      groupId={myGroupId}
+                      title="국무회의 준비 자료실"
+                      description="국무회의에 필요한 자료(공약 근거, 부처별 쟁점, 예산 현황 등)를 모으세요."
+                      defaultTargets={researchTargets}
+                      accent="amber"
+                      referenceLinks={EXEC_RESEARCH_REF_LINKS}
+                    />
+                  </div>
+                </details>
               </div>
             ) : (
               <p className="text-sm text-gray-500">모둠 가입이 필요해요.</p>

@@ -718,6 +718,17 @@ function TeacherDebateControl() {
     }
     await updateAt(roomCode, `debateSessions/${session.id}`, next)
   }
+  // 미배정(none) 학생을 모두 평가단으로 — 이미 배정된 진영(찬/반/추가편/기존 평가단)은 그대로 둔다.
+  const setRestAsEvaluators = async () => {
+    if (!session) return
+    const next = {}
+    let count = 0
+    for (const s of studentsArr) {
+      if (sideOf(s.id) === 'none') { next[`evaluators/${s.id}`] = true; count++ }
+    }
+    if (count === 0) { alert('평가단으로 지정할 미배정 학생이 없습니다.'); return }
+    await updateAt(roomCode, `debateSessions/${session.id}`, next)
+  }
   const clearAllSides = async () => {
     if (!session) return
     if (!confirm('모든 학생의 진영·평가단 배정을 해제할까요?')) return
@@ -1761,6 +1772,7 @@ function TeacherDebateControl() {
             <div className="flex justify-between items-center mb-3 gap-3 flex-wrap">
               <p className="text-xs text-slate-500 font-bold">학생 명단에서 역할을 배정하세요</p>
               <div className="flex gap-2">
+                 <button onClick={setRestAsEvaluators} className="text-[10px] px-2 py-1 bg-violet-500 text-white rounded-lg font-bold shadow-sm">나머지 전부 {modeSideLabels.evaluator}</button>
                  <button onClick={() => setAllEvaluators(true)} className="text-[10px] px-2 py-1 bg-violet-600 text-white rounded-lg font-bold shadow-sm">전원 {modeSideLabels.evaluator}</button>
                  <button onClick={clearAllSides} className="text-[10px] px-2 py-1 bg-white border border-slate-200 text-slate-400 rounded-lg font-bold">전체 해제</button>
               </div>

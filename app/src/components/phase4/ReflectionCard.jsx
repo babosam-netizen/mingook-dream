@@ -24,9 +24,7 @@ function ReflectionCard({ reflection }) {
   const role        = useGameStore((s) => s.role)
   const roomCode    = useGameStore((s) => s.roomCode)
   const myStudentId = useGameStore((s) => s.myStudentId)
-  const [openComments, setOpenComments] = useState(false)
-  const [openCanva,    setOpenCanva]    = useState(false)
-  const [editing,      setEditing]      = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const colorMeta = REFLECTION_COLORS.find((c) => c.id === reflection.color) || REFLECTION_COLORS[0]
   const empathy   = reflection.empathy || {}
@@ -77,19 +75,13 @@ function ReflectionCard({ reflection }) {
         )}
       </div>
 
-      {/* 캔바 카드뉴스 */}
+      {/* 캔바 카드뉴스 — 갤러리에서 바로 보이도록 펼친 상태 */}
       {canvaUrl && (
         <div className="mb-3 rounded-xl overflow-hidden border border-white/80">
-          <button onClick={() => setOpenCanva((v) => !v)}
-            className="w-full text-xs text-violet-700 font-bold px-2 py-1 bg-white/60 hover:bg-white/80 flex justify-between items-center transition">
-            <span>🎨 카드뉴스 보기</span>
-            <span>{openCanva ? '▲' : '▼'}</span>
-          </button>
-          {openCanva && (
-            <div className="aspect-video">
-              <iframe src={canvaUrl} className="w-full h-full" frameBorder="0" allowFullScreen title="카드뉴스" />
-            </div>
-          )}
+          <div className="text-xs text-violet-700 font-bold px-2 py-1 bg-white/60">🎨 카드뉴스</div>
+          <div className="aspect-video">
+            <iframe src={canvaUrl} className="w-full h-full" frameBorder="0" allowFullScreen title="카드뉴스" />
+          </div>
         </div>
       )}
 
@@ -136,14 +128,12 @@ function ReflectionCard({ reflection }) {
         </div>
       )}
 
-      {/* 마치며 */}
+      {/* 마치며 — 갤러리에서 바로 보이도록 펼친 상태 */}
       {reflection.finalEssay && (
-        <details className="mb-2 border-t border-white/50 pt-2">
-          <summary className="text-xs cursor-pointer font-semibold text-gray-600 hover:text-gray-900">
-            📜 마치며 글 펼치기
-          </summary>
+        <div className="mb-2 border-t border-white/50 pt-2">
+          <p className="text-xs font-semibold text-gray-600">📜 마치며</p>
           <p className="text-sm whitespace-pre-wrap mt-1 bg-white/60 p-2 rounded">{reflection.finalEssay}</p>
-        </details>
+        </div>
       )}
 
       {/* 반려 메모 (본인에게만 표시) */}
@@ -177,16 +167,19 @@ function ReflectionCard({ reflection }) {
         </button>
       )}
 
-      {/* 댓글 */}
-      <button onClick={() => setOpenComments((v) => !v)}
-        className="mt-2 text-xs text-pink-700 hover:text-pink-900 block">
-        {openComments ? '댓글 접기 ▲' : '댓글 펼치기 ▼'}
-      </button>
-      {openComments && (
-        <div className="mt-2 pt-2 border-t border-white/50">
-          <CommentList targetType="reflection" targetId={reflection.id} />
-        </div>
-      )}
+      {/* 질문·댓글 — 갤러리에서 바로 보이도록 펼친 상태. 답글은 글쓴이(원작자)만 가능 */}
+      <div className="mt-3 pt-2 border-t border-white/50">
+        <p className="text-xs font-bold text-pink-700 mb-1">
+          💬 질문·댓글
+          {isOwn && <span className="ml-1 text-[10px] font-normal text-gray-500">— 친구들 질문에 답글을 달 수 있어요</span>}
+        </p>
+        <CommentList
+          targetType="reflection"
+          targetId={reflection.id}
+          allowReplies
+          ownerStudentId={reflection.authorStudentId}
+        />
+      </div>
     </article>
   )
 }

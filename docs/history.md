@@ -6,6 +6,13 @@
 
 ---
 
+## v1.6.0 (2026-06-07) [Claude] — 4건: 공동작업 대통령실 국무회의 준비 / 토론 평가단 일괄 / 갤러리워크 / 캔바 평가목록
+- #1 공동작업 대통령실에 국무회의 준비(PresidentControlPanel: 공약·업무지시·대본) + 자료 올리기(ResearchWorkspace). 대본은 토론도구로 연결.
+- #2 토론도구 "나머지 전부 평가단" 버튼(`setRestAsEvaluators`, 미배정만 평가단).
+- #3 갤러리워크 `ReflectionCard` 전부 펼침(캔바·마치며·댓글) + 답글은 글쓴이만(`CommentList` ownerStudentId prop).
+- #4 `CanvaCardNewsStep` 평가 활동 상위4 제한 제거→별점순 전체 스크롤.
+- `npm run build` 통과. `APP_BUILD` v1.6.0.
+
 ## v1.5.2 (2026-06-07) [Claude] — 공동작업 제출 후 임시저장이 제출상태를 'saved'로 강등하던 버그 수정
 - 증상: 공동작업 제출했는데 교사화면 '작성중'(demo24 마음의집). 원인: 동시편집 중 제출 직후 임시/구역 저장이 로컬 상태 기준으로 status를 'saved'로 강등.
 - 수정: `handleSaveDraft`/`handleSavePart`에서 `getOnce`로 DB 현재 status 확인 → 제출 상태면 저장 차단. `APP_BUILD` v1.5.2.

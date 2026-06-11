@@ -6,6 +6,11 @@
 
 ---
 
+## v1.6.1 (2026-06-07) [Claude] — 행정부 토의·평가: 작성분 일괄 제출(마감) + 평가 중 토의화면 즉시 수정·재제출
+- [A] `Phase3ExecutiveQuickPanel` "📥 모든 부처 초안 일괄 제출"(`bulkSubmitDrafts`, stage 2/3) — 작성분 있는 미제출 부처 모두 submitted 마감(policies→finalDoc→섹션 병합 순).
+- [B] `ExecutivePolicyDiscussionList` 우리 모둠 카드 "✏️ 댓글 보고 수정하기" → 잠금 해제 후 `ExecutivePolicyBudgetDraft` 인라인 편집·재제출.
+- `npm run build` 통과. `APP_BUILD` v1.6.1.
+
 ## v1.6.0 (2026-06-07) [Claude] — 4건: 공동작업 대통령실 국무회의 준비 / 토론 평가단 일괄 / 갤러리워크 / 캔바 평가목록
 - #1 공동작업 대통령실에 국무회의 준비(PresidentControlPanel: 공약·업무지시·대본) + 자료 올리기(ResearchWorkspace). 대본은 토론도구로 연결.
 - #2 토론도구 "나머지 전부 평가단" 버튼(`setRestAsEvaluators`, 미배정만 평가단).

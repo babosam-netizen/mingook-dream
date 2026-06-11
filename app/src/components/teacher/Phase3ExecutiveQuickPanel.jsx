@@ -98,6 +98,62 @@ function Phase3ExecutiveQuickPanel() {
     }
   }
 
+  // 예산검토 → 토의평가 전환 시: 작성분이 있는 모든 부처를 일괄 '제출' 처리(덜 된 것 포함)해 평가 대상에 올린다.
+  const fieldsMeaningful = (pf) => pf && typeof pf === 'object' && Object.values(pf).some((v) => typeof v === 'string' && v.trim().length > 0)
+  const mergeSectionContent = (sections) => {
+    const pf = {}
+    const budget = []
+    for (const sec of Object.values(sections || {})) {
+      const c = sec?.content
+      const spf = c?.policyFields
+      if (spf && typeof spf === 'object') {
+        for (const [k, v] of Object.entries(spf)) {
+          if (typeof v === 'string' && v.trim() && !pf[k]) pf[k] = v
+        }
+      }
+      if (Array.isArray(c?.budgetItems)) budget.push(...c.budgetItems)
+    }
+    return { policyFields: pf, budgetItems: budget }
+  }
+  const bulkSubmitDrafts = async (silent = false) => {
+    if (!roomCode) return
+    const units = branchConfig?.executive?.units || []
+    let count = 0
+    for (const unit of units) {
+      const gid = unit.groupId
+      if (!gid || gid === presidentGroupId) continue // 대통령실은 시행령 미작성 — 제외
+      const policy = policiesMap?.[gid] || {}
+      if (['submitted', 'requested', 'adjusted', 'final'].includes(policy.status)) continue // 이미 제출됨
+      const draft = draftsMap?.[unit.unitId] || {}
+      let content = null
+      if (fieldsMeaningful(policy.policyFields) || (Array.isArray(policy.budgetItems) && policy.budgetItems.length)) {
+        content = { policyFields: policy.policyFields || {}, budgetItems: policy.budgetItems || [] }
+      } else if (draft.finalDoc?.content && fieldsMeaningful(draft.finalDoc.content.policyFields)) {
+        content = { policyFields: draft.finalDoc.content.policyFields, budgetItems: draft.finalDoc.content.budgetItems || [] }
+      } else {
+        const merged = mergeSectionContent(draft.sections)
+        if (fieldsMeaningful(merged.policyFields) || merged.budgetItems.length) content = merged
+      }
+      if (!content) continue // 작성분 없음 → 건너뜀
+      const budgetTotal = (content.budgetItems || []).reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+      await setAt(roomCode, `policies/${gid}`, {
+        ...policy,
+        ministryName: unit.ministryName || policy.ministryName || '',
+        groupId: gid,
+        branchUnitId: unit.unitId,
+        status: 'submitted',
+        submittedAt: Date.now(),
+        autoSubmitted: true,
+        policyFields: content.policyFields,
+        budgetItems: content.budgetItems || [],
+        draftBudget: budgetTotal,
+        requestedBudget: budgetTotal,
+      })
+      count++
+    }
+    if (!silent) alert(count > 0 ? `${count}개 부처의 초안을 제출 처리했습니다. 이제 친구들이 평가할 수 있어요.` : '제출할 작성 내용이 있는 미제출 부처가 없습니다.')
+  }
+
   // 초안 제출 취소 — 공동작업/역할중심 공통. finalDoc 잠금 해제 + policies 를 'saved'로 되돌려 다시 편집·제출 가능.
   const cancelSubmission = async (unit) => {
     if (!roomCode || !unit) return
@@ -643,6 +699,22 @@ function Phase3ExecutiveQuickPanel() {
           </button>
         </div>
       </div>
+
+      {/* === 토의·평가 마감: 작성분 일괄 제출 (예산검토~토의평가 단계) === */}
+      {(stage === 2 || stage === 3) && (
+        <div className="border-t border-slate-200 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-amber-50/60 -mx-1 px-3 py-2.5 rounded-lg">
+          <div className="flex-1">
+            <p className="text-xs font-bold text-amber-900">📥 토의·평가 시작 전 일괄 제출(마감)</p>
+            <p className="text-[11px] text-amber-700">누르면 작성 중인 모든 부처 초안을 제출 처리해 평가 대상에 올립니다(덜 된 것 포함). 각 모둠은 평가 중에도 토의화면에서 수정·재제출할 수 있어요.</p>
+          </div>
+          <button
+            onClick={() => bulkSubmitDrafts(false)}
+            className="shrink-0 px-3 py-2 text-xs font-black rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition active:scale-95"
+          >
+            📥 모든 부처 초안 일괄 제출
+          </button>
+        </div>
+      )}
 
       {/* === 부처별 실시간 진행 현황 모니터링 === */}
       <div className="border-t border-slate-200 pt-3.5 space-y-2.5">

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
-import { pushUnder, removeAt, subscribe, updateAt } from '../../lib/rtdb-helpers'
+import { pushUnder, removeAt, subscribe, updateAt, setAt } from '../../lib/rtdb-helpers'
 import MultiAxisRating from '../shared/MultiAxisRating'
 import { EXECUTIVE_RATING_AXES } from './executiveBudgetData'
+import ExecutivePolicyBudgetDraft from './ExecutivePolicyBudgetDraft'
 
 const STANCES = ['찬성', '반대', '중립']
 const BUDGET_OPINIONS = ['유지', '증액', '감액', '재검토']
@@ -170,6 +171,15 @@ function ExecutivePolicyDiscussionList() {
     return Object.entries(groups || {}).find(([, g]) => g?.members?.[myStudentId])?.[0] || null
   }, [groups, myStudentId])
 
+  // 평가 중 우리 모둠 정책 수정 — 토의화면에서 바로 수정·재제출
+  const [editingGid, setEditingGid] = useState(null)
+  const startEditing = async (p) => {
+    // 잠금 해제 + 편집 가능 상태로(내용 보존). 학생이 ExecutivePolicyBudgetDraft에서 다시 [최종 제출]하면 제출됨.
+    if (p.branchUnitId) await setAt(roomCode, `branchDrafts/${p.branchUnitId}/finalDoc/status`, 'draft')
+    await updateAt(roomCode, `policies/${p.gid}`, { status: 'saved' })
+    setEditingGid(p.gid)
+  }
+
   const submitted = Object.entries(policies)
     .filter(([, p]) => ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p?.status))
     .map(([gid, p]) => ({ gid, ...p }))
@@ -238,6 +248,7 @@ function ExecutivePolicyDiscussionList() {
         const budgetItems = Array.isArray(p.budgetItems) ? p.budgetItems : []
         const isSavedOnly = p.status === 'saved'
         const isPresident = (presidentGroupId && p.gid === presidentGroupId) || String(p.ministryName || '').includes('대통령')
+        const isMine = role === 'student' && p.gid === myGroupId && !isPresident
         return (
           <article key={p.gid} className="rounded-2xl border-2 border-violet-200 bg-white p-4 space-y-3">
             <header className="flex justify-between gap-2 flex-wrap">
@@ -249,6 +260,24 @@ function ExecutivePolicyDiscussionList() {
                 {p.status === 'requested' ? '청구 확정' : isSavedOnly ? '시행령 저장 (발의 대기중)' : '정책·예산안 발의'}
               </span>
             </header>
+
+            {/* 우리 모둠: 평가 중에도 댓글 보고 바로 수정·재제출 */}
+            {isMine && (editingGid === p.gid ? (
+              <div className="rounded-xl border-2 border-violet-300 bg-violet-50/40 p-2 space-y-2">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-xs font-black text-violet-800">✏️ 우리 모둠 정책 수정 중 — 아래 댓글을 참고해 고친 뒤 [🚀 최종 제출]을 다시 누르세요</span>
+                  <button onClick={() => setEditingGid(null)} className="shrink-0 text-[11px] text-slate-500 underline">수정 닫기</button>
+                </div>
+                <ExecutivePolicyBudgetDraft groupId={p.gid} />
+              </div>
+            ) : (
+              <button
+                onClick={() => startEditing(p)}
+                className="text-xs font-bold text-violet-700 border border-violet-300 rounded-lg px-3 py-1.5 hover:bg-violet-50 transition"
+              >
+                ✏️ 댓글 보고 수정하기
+              </button>
+            ))}
             <div className="grid md:grid-cols-2 gap-3 text-sm">
               {f.linkedBillTitle && (
                 <div className="rounded-xl bg-indigo-50 p-3 md:col-span-2"><b className="text-indigo-800">근거 법령</b><p className="whitespace-pre-wrap">{f.linkedBillTitle}</p></div>

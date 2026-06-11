@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { pushUnder, removeAt, subscribe, updateAt, setAt } from '../../lib/rtdb-helpers'
 import MultiAxisRating from '../shared/MultiAxisRating'
@@ -173,12 +173,26 @@ function ExecutivePolicyDiscussionList() {
 
   // 평가 중 우리 모둠 정책 수정 — 토의화면에서 바로 수정·재제출
   const [editingGid, setEditingGid] = useState(null)
+  const sawEditableRef = useRef(false)
   const startEditing = async (p) => {
     // 잠금 해제 + 편집 가능 상태로(내용 보존). 학생이 ExecutivePolicyBudgetDraft에서 다시 [최종 제출]하면 제출됨.
     if (p.branchUnitId) await setAt(roomCode, `branchDrafts/${p.branchUnitId}/finalDoc/status`, 'draft')
     await updateAt(roomCode, `policies/${p.gid}`, { status: 'saved' })
+    sawEditableRef.current = false
     setEditingGid(p.gid)
   }
+
+  // 재제출(다시 submitted) 되면 수정 모드 자동 종료 — "수정 닫기"를 따로 누르지 않아도 됨.
+  useEffect(() => {
+    if (!editingGid) return
+    const st = policies?.[editingGid]?.status
+    const submitted = ['submitted', 'requested', 'adjusted', 'final'].includes(st)
+    if (!submitted) {
+      sawEditableRef.current = true // 편집 가능(saved) 상태를 한 번 본 뒤에만 자동 종료 허용
+    } else if (sawEditableRef.current) {
+      setEditingGid(null)
+    }
+  }, [policies, editingGid])
 
   const submitted = Object.entries(policies)
     .filter(([, p]) => ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p?.status))

@@ -6,6 +6,9 @@
 
 ---
 
+## v1.6.3 (2026-06-07) [Claude] — 토의화면 인라인 수정: 재제출 시 '수정 닫기' 단계 없이 자동 종료
+- `ExecutivePolicyDiscussionList`: 재제출(submitted) 감지 시 editingGid 자동 해제(sawEditableRef로 경합 방지). `APP_BUILD` v1.6.3.
+
 ## v1.6.2 (2026-06-07) [Claude] — 행정부 초안 일괄 제출을 단계 전환 시 '자동' 실행으로
 - 버튼만이라 안 누르면 'saved'로 남아 평가 막히던 문제. `Phase3ExecutiveQuickPanel`에 stage≥2 진입 시 `bulkSubmitDrafts` 1회 자동 실행(마커 `executiveBulkSubmitDone`). 수동 버튼 유지. `APP_BUILD` v1.6.2.
 

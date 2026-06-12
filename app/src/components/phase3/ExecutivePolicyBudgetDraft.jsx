@@ -8,6 +8,8 @@ import {
   DEFAULT_EXECUTIVE_BUDGET,
   EXECUTIVE_ROLE_CARDS,
   emptyBudgetCalc,
+  formatBudgetAmount,
+  roundBudgetAmount,
 } from './executiveBudgetData'
 
 const SESSION_ID = 'executive-default'
@@ -56,7 +58,7 @@ export function normalizeBudgetItems(policy) {
       ...newBudgetItem(),
       ...item,
       calc: { ...emptyBudgetCalc(), ...(item.calc || item.budgetCalc || {}) },
-      amount: Number(item.amount) || 0,
+      amount: roundBudgetAmount(item.amount),
     }))
   }
   const legacyBudget = policy?.budget
@@ -67,7 +69,7 @@ export function normalizeBudgetItems(policy) {
       .map(([key, amount]) => newBudgetItem({
         title: key,
         note: reasons[key] || '기존 예산 항목',
-        amount: Number(amount) || 0,
+        amount: roundBudgetAmount(amount),
       }))
   }
   const singleBudget = Number(policy?.requestedBudget ?? policy?.draftBudget ?? policy?.finalBudget ?? 0)
@@ -75,7 +77,7 @@ export function normalizeBudgetItems(policy) {
     return [newBudgetItem({
       title: '기본 집행 예산',
       calc: { ...emptyBudgetCalc(), ...(policy?.budgetCalc || {}) },
-      amount: singleBudget,
+      amount: roundBudgetAmount(singleBudget),
     })]
   }
   return []
@@ -151,7 +153,7 @@ function buildOrdinancePreview(fields, ministryName = '담당 부처') {
 }
 
 export function budgetItemTotal(items = []) {
-  return Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 10) / 10
+  return roundBudgetAmount(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0))
 }
 
 export function buildBudgetFormula(calc = {}, fallback = '') {
@@ -602,7 +604,7 @@ export function ExecutiveSectionBudgetManager({
           title: msg.title || '',
           note: msg.note || '',
           calc: { ...emptyBudgetCalc(), ...(msg.calc || {}) },
-          amount: Number(msg.amount) || 0,
+          amount: roundBudgetAmount(msg.amount),
         }
         if (exists) {
           return prev.map((item) =>
@@ -916,7 +918,7 @@ export function ExecutiveSectionBudgetManager({
                 <>
                   <span className="truncate text-xs font-bold text-emerald-950">{item.title || `항목 ${idx + 1}`}</span>
                   <span className="truncate text-xs text-slate-500">{item.note || buildBudgetFormula(item.calc) || '산출내역 미입력'}</span>
-                  <span className="text-right text-xs font-bold text-emerald-800">{Number(item.amount) || 0}억</span>
+                  <span className="text-right text-xs font-bold text-emerald-800">{formatBudgetAmount(item.amount)}억</span>
                 </>
               )}
               {editing && (
@@ -934,7 +936,7 @@ export function ExecutiveSectionBudgetManager({
       </div>
       <div className="flex items-center justify-between text-xs text-emerald-950 font-bold px-0.5">
         <span>역할 예산 소계:</span>
-        <span>{budgetItemsTotal}억 <span className="text-[10px] text-emerald-700 font-normal">(총 {totalBudget}억)</span></span>
+        <span>{formatBudgetAmount(budgetItemsTotal)}억 <span className="text-[10px] text-emerald-700 font-normal">(총 {formatBudgetAmount(totalBudget)}억)</span></span>
       </div>
     </div>
   )
@@ -1206,7 +1208,7 @@ export function ExecutiveSectionViewer({ sectionKey, sec, roleDef }) {
             {budgetItems.map((item, idx) => (
               <div key={item.id || idx} className="text-[10px] flex items-center justify-between text-slate-700 bg-white px-2 py-0.5 rounded border border-emerald-100/50">
                 <span>{idx + 1}. {item.title || '(무제)'} ({item.note || '산출식 미입력'})</span>
-                <span className="font-bold text-emerald-800 shrink-0">{item.amount || 0}억</span>
+                <span className="font-bold text-emerald-800 shrink-0">{formatBudgetAmount(item.amount)}억</span>
               </div>
             ))}
           </div>
@@ -1489,7 +1491,7 @@ export function ExecutiveFinalAssembler({
             </div>
             <div className="text-right">
               <p className="text-[10px] text-slate-400">총 청구 예산</p>
-              <p className="text-lg font-black text-emerald-400">{budgetTotal}억</p>
+              <p className="text-lg font-black text-emerald-400">{formatBudgetAmount(budgetTotal)}억</p>
             </div>
           </div>
 
@@ -1540,14 +1542,14 @@ export function ExecutiveFinalAssembler({
                         <p className="font-bold text-white truncate text-[11px]">{idx + 1}. {item.title || '(무제)'}</p>
                         <p className="text-[10px] text-slate-500 truncate">{item.note || buildBudgetFormula(item.calc) || '산출식 미기입'}</p>
                       </div>
-                      <span className="font-bold text-emerald-400 text-xs shrink-0">{item.amount || 0}억</span>
+                      <span className="font-bold text-emerald-400 text-xs shrink-0">{formatBudgetAmount(item.amount)}억</span>
                     </div>
                   ))}
                 </div>
               )}
               <div className="border-t border-slate-800 pt-2 flex justify-between text-xs font-black text-white">
                 <span>총 청구액 합계:</span>
-                <span className="text-emerald-450">{budgetTotal}억</span>
+                <span className="text-emerald-450">{formatBudgetAmount(budgetTotal)}억</span>
               </div>
             </div>
           </div>
@@ -1798,7 +1800,7 @@ export function ExecutiveFinalViewer({
         </div>
         <div className="text-right">
           <p className="text-[10px] text-slate-400">총 청구 예산</p>
-          <p className="text-lg font-black text-emerald-400">{total}억</p>
+          <p className="text-lg font-black text-emerald-400">{formatBudgetAmount(total)}억</p>
         </div>
       </div>
 
@@ -1849,14 +1851,14 @@ export function ExecutiveFinalViewer({
                     <p className="font-bold text-white truncate text-[11px]">{idx + 1}. {item.title || '(무제)'}</p>
                     <p className="text-[10px] text-slate-500 truncate">{item.note || buildBudgetFormula(item.calc) || '산출식 미기입'}</p>
                   </div>
-                  <span className="font-bold text-emerald-400 text-xs shrink-0">{item.amount || 0}억</span>
+                  <span className="font-bold text-emerald-400 text-xs shrink-0">{formatBudgetAmount(item.amount)}억</span>
                 </div>
               ))}
             </div>
           )}
           <div className="border-t border-slate-800 pt-2 flex justify-between text-xs font-black text-white">
             <span>총 청구액 합계:</span>
-            <span className="text-emerald-400">{total}억</span>
+            <span className="text-emerald-400">{formatBudgetAmount(total)}억</span>
           </div>
         </div>
       </div>

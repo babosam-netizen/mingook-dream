@@ -1,5 +1,14 @@
 export const DEFAULT_EXECUTIVE_BUDGET = 100
 
+export function roundBudgetAmount(value) {
+  return Math.round((Number(value) || 0) * 10) / 10
+}
+
+export function formatBudgetAmount(value) {
+  const rounded = roundBudgetAmount(value)
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
 export const EXECUTIVE_RATING_AXES = [
   { key: 'relevance', full: '🎯 과제관련성', short: '🎯 관련', color: 'bg-amber-500' },
   { key: 'feasibility', full: '🛠️ 실행가능성', short: '🛠️ 실행', color: 'bg-emerald-500' },
@@ -108,24 +117,24 @@ export function calcBudget(calc, stats = BIBIM_STATS) {
     targetPeople,
     directWon,
     totalWon,
-    totalEok: Math.round((totalWon / 100000000) * 10) / 10,
+    totalEok: roundBudgetAmount(totalWon / 100000000),
   }
 }
 
 export function totalRequestedBudget(policies = []) {
-  return policies.reduce((sum, p) => {
+  return roundBudgetAmount(policies.reduce((sum, p) => {
     const itemTotal = Array.isArray(p.budgetItems)
       ? p.budgetItems.reduce((s, item) => s + (Number(item.amount) || 0), 0)
       : 0
     return sum + (Number(p.requestedBudget ?? p.draftBudget) || itemTotal || 0)
-  }, 0)
+  }, 0))
 }
 
 export function totalFinalBudget(policies = []) {
-  return policies.reduce((sum, p) => {
+  return roundBudgetAmount(policies.reduce((sum, p) => {
     const itemTotal = Array.isArray(p.budgetItems)
       ? p.budgetItems.reduce((s, item) => s + (Number(item.amount) || 0), 0)
       : 0
     return sum + (Number(p.finalBudget ?? p.requestedBudget ?? p.draftBudget) || itemTotal || 0)
-  }, 0)
+  }, 0))
 }

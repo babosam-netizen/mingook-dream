@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe, setAt } from '../../lib/rtdb-helpers'
+import { formatBudgetAmount, roundBudgetAmount } from './executiveBudgetData'
 
 /**
  * 대통령실 전용 상단 패널.
@@ -70,10 +71,10 @@ export default function PresidentControlPanel({ groupId }) {
   // 대통령 공약 예약 예산 (시행령 예산 합계)
   const reservedBudget = useMemo(() => {
     if (!myPolicy) return 0
-    if (Number(myPolicy.draftBudget)) return Number(myPolicy.draftBudget)
+    if (Number(myPolicy.draftBudget)) return roundBudgetAmount(myPolicy.draftBudget)
     const items = myPolicy.budgetItems || myPolicy.budget?.items || []
     const arr = Array.isArray(items) ? items : Object.values(items || {})
-    return arr.reduce((sum, it) => sum + (Number(it?.amount) || Number(it?.total) || 0), 0)
+    return roundBudgetAmount(arr.reduce((sum, it) => sum + (Number(it?.amount) || Number(it?.total) || 0), 0))
   }, [myPolicy])
 
   // ── 로컬 편집 상태 (포커스 중에는 원격 덮어쓰기 방지) ──
@@ -155,7 +156,7 @@ export default function PresidentControlPanel({ groupId }) {
     }
     lines.push('')
     lines.push('【3. 예산 조정 안내】')
-    lines.push(`우리 공약 예산 ${reservedBudget}억은 먼저 확보합니다. 남은 예산 안에서 각 부처가 시행령 예산을 조정해 주시기 바랍니다.`)
+    lines.push(`우리 공약 예산 ${formatBudgetAmount(reservedBudget)}억은 먼저 확보합니다. 남은 예산 안에서 각 부처가 시행령 예산을 조정해 주시기 바랍니다.`)
     lines.push('')
     lines.push('【4. 마무리】')
     lines.push('각 부처의 협조를 부탁드리며, 오늘 국무회의를 시작하겠습니다.')

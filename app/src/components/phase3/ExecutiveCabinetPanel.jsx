@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { pushUnder, subscribe, updateAt } from '../../lib/rtdb-helpers'
-import { DEFAULT_EXECUTIVE_BUDGET, totalFinalBudget, totalRequestedBudget } from './executiveBudgetData'
+import { DEFAULT_EXECUTIVE_BUDGET, formatBudgetAmount, roundBudgetAmount, totalFinalBudget, totalRequestedBudget } from './executiveBudgetData'
 
 function ExecutiveCabinetPanel() {
   const roomCode = useGameStore((s) => s.roomCode)
@@ -35,8 +35,8 @@ function ExecutiveCabinetPanel() {
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)), [briefingsMap])
   const requestedTotal = totalRequestedBudget(policies)
   const finalTotal = totalFinalBudget(policies)
-  const diff = Math.round((requestedTotal - totalBudget) * 10) / 10
-  const finalDiff = Math.round((finalTotal - totalBudget) * 10) / 10
+  const diff = roundBudgetAmount(requestedTotal - totalBudget)
+  const finalDiff = roundBudgetAmount(finalTotal - totalBudget)
 
   const statsFor = (policyId) => {
     const list = comments.filter((c) => c.policyId === policyId)
@@ -88,19 +88,19 @@ function ExecutiveCabinetPanel() {
       <section className="grid md:grid-cols-3 gap-3">
         <div className="rounded-2xl bg-white border-2 border-violet-200 p-4">
           <p className="text-xs font-bold text-violet-500">정부 전체 예산</p>
-          <p className="text-3xl font-black text-violet-900">{totalBudget}억</p>
+          <p className="text-3xl font-black text-violet-900">{formatBudgetAmount(totalBudget)}억</p>
         </div>
         <div className={`rounded-2xl bg-white border-2 p-4 ${diff > 0 ? 'border-rose-200' : diff < 0 ? 'border-sky-200' : 'border-emerald-200'}`}>
           <p className="text-xs font-bold text-slate-500">총 청구액</p>
-          <p className="text-3xl font-black text-slate-900">{requestedTotal}억</p>
+          <p className="text-3xl font-black text-slate-900">{formatBudgetAmount(requestedTotal)}억</p>
           <p className={`text-xs font-bold ${diff > 0 ? 'text-rose-600' : diff < 0 ? 'text-sky-600' : 'text-emerald-600'}`}>
-            {diff > 0 ? `${diff}억 초과: 줄일 곳을 찾아야 합니다.` : diff < 0 ? `${Math.abs(diff)}억 잔여: 더 배정할 곳을 찾아야 합니다.` : '정부 예산에 맞았습니다.'}
+            {diff > 0 ? `${formatBudgetAmount(diff)}억 초과: 줄일 곳을 찾아야 합니다.` : diff < 0 ? `${formatBudgetAmount(Math.abs(diff))}억 잔여: 더 배정할 곳을 찾아야 합니다.` : '정부 예산에 맞았습니다.'}
           </p>
         </div>
         <div className={`rounded-2xl bg-white border-2 p-4 ${finalDiff === 0 ? 'border-emerald-200' : 'border-amber-200'}`}>
           <p className="text-xs font-bold text-slate-500">최종 배정 합계</p>
-          <p className="text-3xl font-black text-slate-900">{finalTotal}억</p>
-          <p className="text-xs font-bold text-amber-600">{finalDiff === 0 ? '최종 예산안 균형' : `${Math.abs(finalDiff)}억 ${finalDiff > 0 ? '초과' : '잔여'}`}</p>
+          <p className="text-3xl font-black text-slate-900">{formatBudgetAmount(finalTotal)}억</p>
+          <p className="text-xs font-bold text-amber-600">{finalDiff === 0 ? '최종 예산안 균형' : `${formatBudgetAmount(Math.abs(finalDiff))}억 ${finalDiff > 0 ? '초과' : '잔여'}`}</p>
         </div>
       </section>
 
@@ -131,8 +131,8 @@ function ExecutiveCabinetPanel() {
         {policies.map((p) => {
           const f = p.policyFields || {}
           const s = statsFor(p.gid)
-          const requested = Number(p.requestedBudget ?? p.draftBudget) || 0
-          const finalBudget = Number(p.finalBudget ?? requested) || 0
+          const requested = roundBudgetAmount(Number(p.requestedBudget ?? p.draftBudget) || 0)
+          const finalBudget = roundBudgetAmount(Number(p.finalBudget ?? requested) || 0)
           const budgetItems = Array.isArray(p.budgetItems) ? p.budgetItems : []
           return (
             <article key={p.gid} className="rounded-2xl border-2 border-violet-200 bg-white p-4 space-y-3">
@@ -142,8 +142,8 @@ function ExecutiveCabinetPanel() {
                   <p className="text-xs text-slate-500">찬성 {s.pro} · 반대 {s.con} · 중립 {s.neutral} · 평가 {s.count}개</p>
                 </div>
                 <div className="text-right text-xs">
-                  <p>청구 <b>{requested}억</b></p>
-                  <p>최종 <b>{finalBudget}억</b></p>
+                  <p>청구 <b>{formatBudgetAmount(requested)}억</b></p>
+                  <p>최종 <b>{formatBudgetAmount(finalBudget)}억</b></p>
                 </div>
               </header>
               <div className="grid md:grid-cols-3 gap-2 text-xs">
@@ -160,7 +160,7 @@ function ExecutiveCabinetPanel() {
                   <b>예산 항목</b>
                   <ul className="mt-1 space-y-1 text-xs text-slate-700">
                     {budgetItems.map((item, idx) => (
-                      <li key={item.id || idx}>- {item.title || `항목 ${idx + 1}`}: <b>{Number(item.amount) || 0}억</b>{item.note ? ` · ${item.note}` : ''}</li>
+                      <li key={item.id || idx}>- {item.title || `항목 ${idx + 1}`}: <b>{formatBudgetAmount(item.amount)}억</b>{item.note ? ` · ${item.note}` : ''}</li>
                     ))}
                   </ul>
                 </div>

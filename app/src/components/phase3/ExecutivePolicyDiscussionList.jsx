@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { pushUnder, removeAt, subscribe, updateAt, setAt } from '../../lib/rtdb-helpers'
 import MultiAxisRating from '../shared/MultiAxisRating'
-import { EXECUTIVE_RATING_AXES } from './executiveBudgetData'
+import { EXECUTIVE_RATING_AXES, formatBudgetAmount, roundBudgetAmount } from './executiveBudgetData'
 import ExecutivePolicyBudgetDraft from './ExecutivePolicyBudgetDraft'
 
 const STANCES = ['찬성', '반대', '중립']
@@ -199,8 +199,8 @@ function ExecutivePolicyDiscussionList() {
     .map(([gid, p]) => ({ gid, ...p }))
     .sort((a, b) => (b.submittedAt || b.updatedAt || 0) - (a.submittedAt || a.updatedAt || 0))
 
-  const totalRequested = submitted.reduce((sum, p) => sum + (Number(p.requestedBudget ?? p.draftBudget) || 0), 0)
-  const diff = totalRequested - totalCap
+  const totalRequested = roundBudgetAmount(submitted.reduce((sum, p) => sum + (Number(p.requestedBudget ?? p.draftBudget) || 0), 0))
+  const diff = roundBudgetAmount(totalRequested - totalCap)
   const isExcess = diff > 0
   const pct = totalCap > 0 ? Math.round((totalRequested / totalCap) * 100) : 0
 
@@ -224,16 +224,16 @@ function ExecutivePolicyDiscussionList() {
           <div className="flex items-center gap-4 bg-black/30 px-4 py-2 rounded-xl border border-white/10 flex-wrap">
             <div className="text-center">
               <span className="text-[10px] text-white/60 block font-bold">정부 총예산</span>
-              <span className="text-sm md:text-base font-black text-white">{totalCap} 억원</span>
+              <span className="text-sm md:text-base font-black text-white">{formatBudgetAmount(totalCap)} 억원</span>
             </div>
             <div className="text-center border-l border-white/10 pl-4">
               <span className="text-[10px] text-white/60 block font-bold">청구 합계</span>
-              <span className="text-sm md:text-base font-black text-indigo-300">{totalRequested} 억원</span>
+              <span className="text-sm md:text-base font-black text-indigo-300">{formatBudgetAmount(totalRequested)} 억원</span>
             </div>
             <div className="text-center border-l border-white/10 pl-4">
               <span className="text-[10px] text-white/60 block font-bold">{isExcess ? '초과액' : '잔여액'}</span>
               <span className={`text-sm md:text-base font-black ${isExcess ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-                {Math.abs(diff)} 억원 {isExcess ? '⚠️' : '✅'}
+                {formatBudgetAmount(Math.abs(diff))} 억원 {isExcess ? '⚠️' : '✅'}
               </span>
             </div>
           </div>
@@ -258,7 +258,7 @@ function ExecutivePolicyDiscussionList() {
 
       {submitted.map((p) => {
         const f = p.policyFields || {}
-        const requested = Number(p.requestedBudget ?? p.draftBudget) || 0
+        const requested = roundBudgetAmount(Number(p.requestedBudget ?? p.draftBudget) || 0)
         const budgetItems = Array.isArray(p.budgetItems) ? p.budgetItems : []
         const isSavedOnly = p.status === 'saved'
         const isPresident = (presidentGroupId && p.gid === presidentGroupId) || String(p.ministryName || '').includes('대통령')
@@ -268,7 +268,7 @@ function ExecutivePolicyDiscussionList() {
             <header className="flex justify-between gap-2 flex-wrap">
               <div>
                 <h3 className="font-black text-violet-950">{isPresident ? '👑' : '🏢'} {p.ministryName || p.groupName || '부처'} — {f.title || '집행계획명 미입력'}</h3>
-                <p className="text-xs text-slate-500">청구 예산 {requested}억 · 초안 {p.draftBudget || 0}억</p>
+                <p className="text-xs text-slate-500">청구 예산 {formatBudgetAmount(requested)}억 · 초안 {formatBudgetAmount(p.draftBudget)}억</p>
               </div>
               <span className={`rounded-full px-3 py-1 text-[11px] font-black ${isSavedOnly ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
                 {p.status === 'requested' ? '청구 확정' : isSavedOnly ? '시행령 저장 (발의 대기중)' : '정책·예산안 발의'}
@@ -314,7 +314,7 @@ function ExecutivePolicyDiscussionList() {
                   <b className="text-lime-800">예산 항목</b>
                   <ul className="mt-1 space-y-1">
                     {budgetItems.map((item, idx) => (
-                      <li key={item.id || idx} className="text-xs text-slate-700">- {item.title || `항목 ${idx + 1}`}: <b>{Number(item.amount) || 0}억</b>{item.note ? ` · ${item.note}` : ''}</li>
+                      <li key={item.id || idx} className="text-xs text-slate-700">- {item.title || `항목 ${idx + 1}`}: <b>{formatBudgetAmount(item.amount)}억</b>{item.note ? ` · ${item.note}` : ''}</li>
                     ))}
                   </ul>
                 </div>

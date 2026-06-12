@@ -6,6 +6,7 @@ import { DEFAULT_ROLES, normalizeRoleList, normalizeTodo, decorateRoleForContext
 import RoleSelfSelector from '../scaffolding/RoleSelfSelector'
 import GroupRoleSummary from '../scaffolding/GroupRoleSummary'
 import OtherGroupsRoleSummary from '../scaffolding/OtherGroupsRoleSummary'
+import { formatBudgetAmount, roundBudgetAmount } from './executiveBudgetData'
 
 /**
  * BranchUnitWorkspace — 모둠원 기여 워크플로 통합 컴포넌트
@@ -78,7 +79,7 @@ export default function BranchUnitWorkspace({
     if (Array.isArray(policy?.budgetItems)) {
       return policy.budgetItems.map((item) => ({
         ...item,
-        amount: Number(item.amount) || 0,
+        amount: roundBudgetAmount(item.amount),
       }))
     }
     const legacyBudget = policy?.budget
@@ -87,18 +88,18 @@ export default function BranchUnitWorkspace({
         .filter(([, amount]) => Number(amount) > 0)
         .map(([key, amount]) => ({
           title: key,
-          amount: Number(amount) || 0,
+          amount: roundBudgetAmount(amount),
         }))
     }
     const singleBudget = Number(policy?.requestedBudget ?? policy?.draftBudget ?? policy?.finalBudget ?? 0)
     if (singleBudget) {
-      return [{ title: '기본 집행 예산', amount: singleBudget }]
+      return [{ title: '기본 집행 예산', amount: roundBudgetAmount(singleBudget) }]
     }
     return []
   }
 
   const budgetItemTotal = (items = []) => {
-    return Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 10) / 10
+    return roundBudgetAmount(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0))
   }
 
   const buildBudgetFormula = (calc = {}, fallback = '') => {
@@ -992,7 +993,7 @@ export default function BranchUnitWorkspace({
                 <p className="font-bold text-emerald-950 truncate">{item.title || '(예산 항목명 없음)'}</p>
                 <p className="text-[10px] text-emerald-700 truncate">{item.note || buildBudgetFormula(item.calc) || '산출식 미입력'}</p>
               </div>
-              <span className="shrink-0 font-black text-emerald-700">{Number(item.amount) || 0}억</span>
+              <span className="shrink-0 font-black text-emerald-700">{formatBudgetAmount(item.amount)}억</span>
             </div>
           ))}
         </div>
@@ -1091,7 +1092,7 @@ export default function BranchUnitWorkspace({
         ))}
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 flex items-center justify-between gap-3 text-xs">
           <span className="font-black text-emerald-900">전체 예산 합계</span>
-          <span className="text-base font-black text-emerald-700">{budgetItemTotal(budgetItems)}억</span>
+          <span className="text-base font-black text-emerald-700">{formatBudgetAmount(budgetItemTotal(budgetItems))}억</span>
         </div>
       </div>
     )

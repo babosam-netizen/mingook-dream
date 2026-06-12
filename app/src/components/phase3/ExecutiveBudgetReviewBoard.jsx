@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe } from '../../lib/rtdb-helpers'
+import { formatBudgetAmount, roundBudgetAmount } from './executiveBudgetData'
 
 /**
  * 행정부 예산 초안 검토 전광판 (TV 송출용)
@@ -46,31 +47,81 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
     p.branchUnitId === 'exe-president' ||
     String(p.ministryName || '').includes('대통령')
 
-  // 저장(saved) 또는 제출(submitted)된 정책 목록 필터링
-  const allPolicies = Object.values(policiesMap || {}).filter((p) =>
-    ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p.status)
-  )
+  const fieldsMeaningful = (pf) => pf && typeof pf === 'object' && Object.values(pf).some((v) => typeof v === 'string' && v.trim().length > 0)
+  const sectionBudgetItemsOf = (unitId) => {
+    if (!unitId) return []
+    const secs = draftsMap?.[unitId]?.sections || {}
+    return Object.values(secs).flatMap((sec) => Array.isArray(sec?.content?.budgetItems) ? sec.content.budgetItems : [])
+  }
+  const mergeSectionFields = (unitId) => {
+    const secs = draftsMap?.[unitId]?.sections || {}
+    const policyFields = {}
+    Object.values(secs).forEach((sec) => {
+      const spf = sec?.content?.policyFields
+      if (!spf || typeof spf !== 'object') return
+      Object.entries(spf).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim() && !policyFields[key]) policyFields[key] = value
+      })
+    })
+    return policyFields
+  }
+  const budgetItemsTotal = (items = []) => roundBudgetAmount(items.reduce((s, it) => s + (Number(it?.amount) || 0), 0))
 
-  // 정책에 예산이 안 실렸을 때, 모둠원 섹션(branchDrafts) 예산을 직접 합산하는 폴백
+  // 정책에 예산이 안 실렸을 때, finalDoc과 모둠원 섹션(branchDrafts) 예산을 직접 합산하는 폴백
   const unitIdOf = (p) =>
     p?.branchUnitId || (branchConfig.executive?.units || []).find((u) => u.groupId === p?.groupId)?.unitId || null
-  const sectionBudgetOf = (unitId) => {
-    if (!unitId) return 0
-    const secs = draftsMap?.[unitId]?.sections || {}
-    let sum = 0
-    Object.values(secs).forEach((sec) => {
-      const items = sec?.content?.budgetItems
-      if (Array.isArray(items)) sum += items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
-    })
-    return sum
+  const sectionBudgetOf = (unitId) => budgetItemsTotal(sectionBudgetItemsOf(unitId))
+  const normalizedPolicyForUnit = (unit) => {
+    const policy = policiesMap?.[unit.groupId] || {}
+    const draft = draftsMap?.[unit.unitId] || {}
+    const finalContent = draft.finalDoc?.content || {}
+    const sectionFields = mergeSectionFields(unit.unitId)
+    const policyFields = fieldsMeaningful(policy.policyFields)
+      ? policy.policyFields
+      : fieldsMeaningful(finalContent.policyFields)
+        ? finalContent.policyFields
+        : sectionFields
+    const policyBudget = Array.isArray(policy.budgetItems) ? policy.budgetItems : []
+    const finalBudget = Array.isArray(finalContent.budgetItems) ? finalContent.budgetItems : []
+    const sectionBudget = sectionBudgetItemsOf(unit.unitId)
+    const budgetItems = policyBudget.length > 0 ? policyBudget : finalBudget.length > 0 ? finalBudget : sectionBudget
+    const requestedBudget =
+      Number(policy.requestedBudget ?? policy.draftBudget) ||
+      budgetItemsTotal(policyBudget) ||
+      Number(finalContent.requestedBudget ?? finalContent.draftBudget) ||
+      budgetItemsTotal(finalBudget) ||
+      budgetItemsTotal(sectionBudget)
+    const status = policy.status || (draft.finalDoc?.status === 'locked' ? 'submitted' : draft.finalDoc?.status || '')
+    const hasContent = fieldsMeaningful(policyFields) || budgetItems.length > 0 || requestedBudget > 0
+    if (!hasContent) return null
+    return {
+      ...policy,
+      groupId: unit.groupId,
+      branchUnitId: policy.branchUnitId || unit.unitId,
+      ministryName: policy.ministryName || unit.ministryName || '',
+      status: ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(status) ? status : 'saved',
+      policyFields,
+      budgetItems,
+      requestedBudget: roundBudgetAmount(requestedBudget),
+      draftBudget: roundBudgetAmount(Number(policy.draftBudget) || requestedBudget),
+    }
   }
+  const policyByGroup = new Map()
+  Object.values(policiesMap || {})
+    .filter((p) => ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p.status))
+    .forEach((p) => policyByGroup.set(p.groupId, p))
+  ;(branchConfig.executive?.units || []).forEach((unit) => {
+    const normalized = normalizedPolicyForUnit(unit)
+    if (normalized) policyByGroup.set(unit.groupId, normalized)
+  })
+  const allPolicies = Array.from(policyByGroup.values())
   // 정책 예산액 — requestedBudget/draftBudget → policy.budgetItems 합계 → 섹션 예산 합계 순으로 폴백
   const budgetOf = (p) => {
     const direct = Number(p?.requestedBudget ?? p?.draftBudget) || 0
-    if (direct > 0) return direct
+    if (direct > 0) return roundBudgetAmount(direct)
     const items = Array.isArray(p?.budgetItems) ? p.budgetItems : []
     const itemSum = items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
-    if (itemSum > 0) return itemSum
+    if (itemSum > 0) return roundBudgetAmount(itemSum)
     return sectionBudgetOf(unitIdOf(p))
   }
 
@@ -84,7 +135,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
   const totalRequested = allPolicies
     .filter((p) => !isPresidentPolicy(p))
     .reduce((sum, p) => sum + budgetOf(p), 0)
-  const diff = totalRequested - ministryCap
+  const diff = roundBudgetAmount(totalRequested - ministryCap)
   const isExcess = diff > 0
   const pct = ministryCap > 0 ? Math.round((totalRequested / ministryCap) * 100) : 0
 
@@ -113,12 +164,12 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
             <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 p-6 flex flex-col justify-center items-center text-center shadow-lg">
               <span className="text-amber-400 font-bold text-sm md:text-base tracking-wider mb-1">정부 총예산</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl md:text-6xl font-black text-amber-300 tabular-nums tracking-tight">{totalCap}</span>
+                <span className="text-4xl md:text-6xl font-black text-amber-300 tabular-nums tracking-tight">{formatBudgetAmount(totalCap)}</span>
                 <span className="text-amber-200/80 text-lg md:text-2xl font-bold">억원</span>
               </div>
               {presidentReserved > 0 && (
                 <span className="text-[11px] md:text-xs font-semibold text-amber-200/80 mt-2 leading-snug">
-                  👑 대통령 공약 예약 {presidentReserved}억<br />부처 가용 {ministryCap}억
+                  👑 대통령 공약 예약 {formatBudgetAmount(presidentReserved)}억<br />부처 가용 {formatBudgetAmount(ministryCap)}억
                 </span>
               )}
             </div>
@@ -127,7 +178,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
             <div className="rounded-2xl border border-indigo-500/40 bg-indigo-950/30 p-6 flex flex-col justify-center items-center text-center shadow-lg">
               <span className="text-indigo-300 font-bold text-sm md:text-base tracking-wider mb-1">부처 청구액 합계</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl md:text-6xl font-black text-indigo-200 tabular-nums tracking-tight">{totalRequested}</span>
+                <span className="text-4xl md:text-6xl font-black text-indigo-200 tabular-nums tracking-tight">{formatBudgetAmount(totalRequested)}</span>
                 <span className="text-indigo-200/80 text-lg md:text-2xl font-bold">억원</span>
               </div>
             </div>
@@ -143,7 +194,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
               </span>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl md:text-6xl font-black tabular-nums tracking-tight">
-                  {Math.abs(diff)}
+                  {formatBudgetAmount(Math.abs(diff))}
                 </span>
                 <span className="text-lg md:text-2xl font-bold">억원</span>
               </div>
@@ -220,7 +271,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
                     <span className="text-xs font-bold text-amber-400/90 mb-1">예산 청구액</span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl md:text-5xl font-black text-amber-300 tabular-nums tracking-tight">
-                        {budgetOf(policy)}
+                        {formatBudgetAmount(budgetOf(policy))}
                       </span>
                       <span className="text-amber-200/80 text-lg font-bold">억원</span>
                     </div>
@@ -288,7 +339,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
                             <div key={idx} className="rounded-xl bg-black/30 p-3 border border-amber-400/10 space-y-1.5 text-xs md:text-sm">
                               <div className="flex justify-between gap-2 font-bold text-amber-200 border-b border-amber-400/10 pb-1">
                                 <span>항목 {idx + 1}: {item.title || item.category || '사업 예산'}</span>
-                                <span className="text-amber-300 shrink-0">{Number(item.amount) || 0} 억원</span>
+                                <span className="text-amber-300 shrink-0">{formatBudgetAmount(item.amount)} 억원</span>
                               </div>
                               <p className="text-amber-100/80 text-xs pt-0.5">
                                 산출내역: {item.note || item.explanation || '산출내역 미입력'}

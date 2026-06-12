@@ -3,6 +3,7 @@ import useGameStore from '../../store/gameStore'
 import { subscribe } from '../../lib/rtdb-helpers'
 import { useWorkflow } from '../../lib/use-workflow'
 import SubmissionDetailModal from './SubmissionDetailModal'
+import { formatBudgetAmount } from '../phase3/executiveBudgetData'
 
 const STEP_CONFIGS = {
   media: {
@@ -1089,7 +1090,7 @@ function SubmissionDetail({ item, groups, students }) {
       {item.type === 'policy' && (
         <div className="space-y-2">
           <TextBlock title="정책 내용" text={Object.entries(item.policyFields || {}).map(([k, v]) => `${k}: ${v}`).join('\n') || '정책 필드 없음'} />
-          <TextBlock title={`예산안 총 ${Number(item.requestedBudget || item.draftBudget || 0).toLocaleString()}억`} text={(item.budgetItems || []).map((b, idx) => `${idx + 1}. ${b.title || '항목'} / ${b.note || ''} / ${Number(b.amount || 0).toLocaleString()}억`).join('\n') || '예산 항목 없음'} />
+          <TextBlock title={`예산안 총 ${formatBudgetAmount(item.requestedBudget || item.draftBudget || 0)}억`} text={(item.budgetItems || []).map((b, idx) => `${idx + 1}. ${b.title || '항목'} / ${b.note || ''} / ${formatBudgetAmount(b.amount)}억`).join('\n') || '예산 항목 없음'} />
         </div>
       )}
       {item.type === 'research' && (

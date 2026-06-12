@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe } from '../../lib/rtdb-helpers'
+import { formatBudgetAmount, roundBudgetAmount } from '../phase3/executiveBudgetData'
 
 /**
  * 다른 모둠의 핵심 산출물 — 읽기 전용 요약 (Two-Hat 운영용).
@@ -43,20 +44,20 @@ function OtherGroupsRoleSummary({ myGroupId, kind }) {
     if (Array.isArray(policy?.budgetItems)) {
       return policy.budgetItems.map((item) => ({
         ...item,
-        amount: Number(item.amount) || 0,
+        amount: roundBudgetAmount(item.amount),
       }))
     }
     if (policy?.budget && typeof policy.budget === 'object') {
       return Object.entries(policy.budget)
         .filter(([, amount]) => Number(amount) > 0)
-        .map(([title, amount]) => ({ title, amount: Number(amount) || 0 }))
+        .map(([title, amount]) => ({ title, amount: roundBudgetAmount(amount) }))
     }
     const singleBudget = Number(policy?.requestedBudget ?? policy?.draftBudget ?? policy?.finalBudget ?? 0)
-    return singleBudget ? [{ title: '청구 예산', amount: singleBudget }] : []
+    return singleBudget ? [{ title: '청구 예산', amount: roundBudgetAmount(singleBudget) }] : []
   }
 
   const budgetItemTotal = (items = []) =>
-    Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 10) / 10
+    roundBudgetAmount(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0))
 
   const executiveStatusLabel = (status) => {
     if (status === 'final') return '최종 승인'
@@ -160,7 +161,7 @@ function OtherGroupsRoleSummary({ myGroupId, kind }) {
                       </span>
                       {kind === 'executive' && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-black">
-                          {out.budgetTotal || 0}억 청구
+                          {formatBudgetAmount(out.budgetTotal)}억 청구
                         </span>
                       )}
                     </>
@@ -183,7 +184,7 @@ function OtherGroupsRoleSummary({ myGroupId, kind }) {
                   <p className="text-sm font-bold text-slate-900 leading-tight">{out.title}</p>
                   {kind === 'executive' && out.budgetItems?.length > 0 && (
                     <p className="text-[11px] text-violet-700 font-semibold">
-                      예산 항목 {out.budgetItems.length}개 · 총 {out.budgetTotal || 0}억
+                      예산 항목 {out.budgetItems.length}개 · 총 {formatBudgetAmount(out.budgetTotal)}억
                     </p>
                   )}
                   {out.body && (

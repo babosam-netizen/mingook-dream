@@ -5,13 +5,14 @@ import { useWorkflow } from '../../lib/use-workflow'
 import { preserveWindowScrollAfter } from '../../lib/preserve-scroll'
 import { MULTI_PARTY_STAGES } from '../debate/tools/DebateTimer'
 import { DEFAULT_ROLES, normalizeRoleList } from '../../lib/scaffolding-data'
+import { formatBudgetAmount, roundBudgetAmount } from '../phase3/executiveBudgetData'
 
 // 행정부 섹션 키 → 라벨 (예산 모음 표시용)
 const SECTION_LABELS = {
   skeleton: '제1조 목적·제2조 대상',
   decree: '제3조 시행 절차',
   evidence: '제4조 지원 내용·재원',
-  effect: '제4조 벌칙·기대효과',
+  effect: '제5조 점검·예외·보완',
 }
 
 const CABINET_PRE_OPTIONS = [
@@ -143,7 +144,7 @@ function Phase3ExecutiveQuickPanel() {
         if (fieldsMeaningful(merged.policyFields) || merged.budgetItems.length) content = merged
       }
       if (!content) continue // 작성분 없음 → 건너뜀
-      const budgetTotal = (content.budgetItems || []).reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+      const budgetTotal = roundBudgetAmount((content.budgetItems || []).reduce((s, it) => s + (Number(it?.amount) || 0), 0))
       await setAt(roomCode, `policies/${gid}`, {
         ...policy,
         ministryName: unit.ministryName || policy.ministryName || '',
@@ -224,10 +225,39 @@ function Phase3ExecutiveQuickPanel() {
       }))
       .filter((g) => g.items.length > 0)
   }
+  const budgetTotalOf = (items = []) => roundBudgetAmount(items.reduce((s, it) => s + (Number(it?.amount) || 0), 0))
+  const resolvedPolicyContent = (unit, policy = {}) => {
+    const draft = draftsMap?.[unit?.unitId] || {}
+    const finalContent = draft.finalDoc?.content || {}
+    const merged = mergeSectionContent(draft.sections)
+    const policyFields = fieldsMeaningful(policy.policyFields)
+      ? policy.policyFields
+      : fieldsMeaningful(finalContent.policyFields)
+        ? finalContent.policyFields
+        : merged.policyFields || {}
+    const policyBudget = Array.isArray(policy.budgetItems) ? policy.budgetItems : []
+    const finalBudget = Array.isArray(finalContent.budgetItems) ? finalContent.budgetItems : []
+    const budgetItems = policyBudget.length > 0 ? policyBudget : finalBudget.length > 0 ? finalBudget : merged.budgetItems || []
+    const requestedBudget =
+      Number(policy.requestedBudget ?? policy.draftBudget) ||
+      budgetTotalOf(policyBudget) ||
+      Number(finalContent.requestedBudget ?? finalContent.draftBudget) ||
+      budgetTotalOf(finalBudget) ||
+      budgetTotalOf(merged.budgetItems)
+    return {
+      policyFields,
+      budgetItems,
+      requestedBudget: roundBudgetAmount(requestedBudget),
+      status: policy.status || (draft.finalDoc?.status === 'locked' ? 'submitted' : draft.finalDoc?.status || ''),
+      branchUnitId: policy.branchUnitId || unit?.unitId,
+      ministryName: policy.ministryName || unit?.ministryName || '',
+    }
+  }
   // 부처 최종 정책(제출본) 상세 열기 — 정책에 예산이 없으면 섹션 예산으로 폴백
   const openPolicyDetail = (unit, policy) => {
-    const f = policy?.policyFields || {}
-    const policyBudget = Array.isArray(policy?.budgetItems) ? policy.budgetItems : []
+    const resolved = resolvedPolicyContent(unit, policy || {})
+    const f = resolved.policyFields || {}
+    const policyBudget = Array.isArray(resolved.budgetItems) ? resolved.budgetItems : []
     const secGroups = sectionBudgetGroups(unit)
     const secFlat = secGroups.flatMap((g) => g.items)
     // 섹션 텍스트(policyFields가 비었을 때 원본 내용 표시용)
@@ -240,17 +270,17 @@ function Phase3ExecutiveQuickPanel() {
     // 섹션 예산 합계 (진단용)
     const sectionTotal = secFlat.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
     setDetail({
-      title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} — ${f.title || policy?.ministryName || '정책안'}`,
-      who: policy?.status === 'submitted' ? '제출 완료' : policy?.status === 'requested' ? '청구 확정' : (policy?.status || ''),
+      title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} — ${f.title || resolved.ministryName || '정책안'}`,
+      who: resolved.status === 'submitted' ? '제출 완료' : resolved.status === 'requested' ? '청구 확정' : (resolved.status || ''),
       fields: f,
       links: [],
       budgetItems: policyBudget.length > 0 ? policyBudget : secFlat,
       budgetSource: policyBudget.length > 0 ? 'policy' : (secFlat.length > 0 ? 'section' : 'none'),
       sectionBudgetGroups: secGroups,
-      rawBudget: Number(policy?.requestedBudget ?? policy?.draftBudget) || 0,
+      rawBudget: Number(resolved.requestedBudget) || 0,
       sectionTotal,
       sectionTexts,
-      status: policy?.status,
+      status: resolved.status,
       isPolicy: true,
     })
   }
@@ -316,13 +346,13 @@ function Phase3ExecutiveQuickPanel() {
     const itemTotal = Array.isArray(p.budgetItems)
       ? p.budgetItems.reduce((s, item) => s + (Number(item.amount) || 0), 0)
       : 0
-    return Number(p.requestedBudget ?? p.draftBudget) || itemTotal || 0
+    return roundBudgetAmount(Number(p.requestedBudget ?? p.draftBudget) || itemTotal || 0)
   }
   // 대통령 공약 예약분을 먼저 떼고, 부처는 잔여분(ministryCap)에서 조정한다.
-  const presidentReserved = policyEntries.filter(isPresidentP).reduce((sum, p) => sum + policyBudgetOf(p), 0)
-  const ministryCap = Math.max(0, totalBudget - presidentReserved)
-  const totalRequested = policyEntries.filter((p) => !isPresidentP(p)).reduce((sum, p) => sum + policyBudgetOf(p), 0)
-  const budgetDiff = Math.round((totalRequested - ministryCap) * 10) / 10
+  const presidentReserved = roundBudgetAmount(policyEntries.filter(isPresidentP).reduce((sum, p) => sum + policyBudgetOf(p), 0))
+  const ministryCap = roundBudgetAmount(Math.max(0, totalBudget - presidentReserved))
+  const totalRequested = roundBudgetAmount(policyEntries.filter((p) => !isPresidentP(p)).reduce((sum, p) => sum + policyBudgetOf(p), 0))
+  const budgetDiff = roundBudgetAmount(totalRequested - ministryCap)
   const cabinetDebate = useMemo(() => Object.entries(debateSessions || {})
     .map(([id, s]) => ({ id, ...s }))
     .find((s) => s?.relatedExecutiveMeeting && s?.isActive) || null, [debateSessions])
@@ -415,16 +445,16 @@ function Phase3ExecutiveQuickPanel() {
 
   const buildCabinetDebateTopic = () => {
     const stateLine = budgetDiff > 0
-      ? `${budgetDiff}억 초과: 줄일 곳을 찾아야 합니다.`
+      ? `${formatBudgetAmount(budgetDiff)}억 초과: 줄일 곳을 찾아야 합니다.`
       : budgetDiff < 0
-        ? `${Math.abs(budgetDiff)}억 잔여: 더 배정할 곳을 찾아야 합니다.`
+        ? `${formatBudgetAmount(Math.abs(budgetDiff))}억 잔여: 더 배정할 곳을 찾아야 합니다.`
         : '정부 예산과 청구액이 일치합니다.'
     const lines = [
       '행정부 국무회의 다자간 토론',
       '',
-      `정부 총예산: ${totalBudget}억`,
-      ...(presidentReserved > 0 ? [`대통령 공약 예약분: ${presidentReserved}억 (먼저 확보) → 부처 가용: ${ministryCap}억`] : []),
-      `부처 청구액 합계: ${totalRequested}억`,
+      `정부 총예산: ${formatBudgetAmount(totalBudget)}억`,
+      ...(presidentReserved > 0 ? [`대통령 공약 예약분: ${formatBudgetAmount(presidentReserved)}억 (먼저 확보) → 부처 가용: ${formatBudgetAmount(ministryCap)}억`] : []),
+      `부처 청구액 합계: ${formatBudgetAmount(totalRequested)}억`,
       `현재 상태: ${stateLine}`,
       '',
       '토론 기준: 과제관련성, 실행가능성, 공익성',
@@ -449,11 +479,11 @@ function Phase3ExecutiveQuickPanel() {
       lines.push(
         '',
         `${index + 1}. ${ministry} — ${fields.title || '정책명 미입력'}`,
-        `   청구 예산: ${requestedBudget}억`,
+        `   청구 예산: ${formatBudgetAmount(requestedBudget)}억`,
         `   온라인 의견: 찬성 ${s.pro}, 반대 ${s.con}, 중립 ${s.neutral} / 예산 유지 ${s.keep}, 증액 ${s.increase}, 감액 ${s.cut}, 재검토 ${s.rework}`,
         `   3축 평균: 관련성 ${s.relevance}, 실행가능성 ${s.feasibility}, 공익성 ${s.publicGood}`,
       )
-      if (s.suggestedAvg !== null) lines.push(`   학생 제안 예산 평균: ${s.suggestedAvg}억`)
+      if (s.suggestedAvg !== null) lines.push(`   학생 제안 예산 평균: ${formatBudgetAmount(s.suggestedAvg)}억`)
       if (fields.linkedBillTitle) lines.push(`   근거 법령: ${shortText(fields.linkedBillTitle, 80)}`)
       if (fields.content) lines.push(`   집행계획: ${shortText(fields.content)}`)
       if (fields.ordinance) lines.push(`   시행령 초안: ${shortText(fields.ordinance)}`)
@@ -755,7 +785,7 @@ function Phase3ExecutiveQuickPanel() {
                 </button>
               </div>
               <p className="text-[11px] text-slate-500">
-                현재 예산 상태: 총 {totalBudget}억{presidentReserved > 0 ? ` (👑예약 ${presidentReserved} · 부처가용 ${ministryCap})` : ''} / 부처청구 {totalRequested}억 · {budgetDiff > 0 ? `${budgetDiff}억 초과` : budgetDiff < 0 ? `${Math.abs(budgetDiff)}억 잔여` : '균형'}
+                현재 예산 상태: 총 {formatBudgetAmount(totalBudget)}억{presidentReserved > 0 ? ` (👑예약 ${formatBudgetAmount(presidentReserved)} · 부처가용 ${formatBudgetAmount(ministryCap)})` : ''} / 부처청구 {formatBudgetAmount(totalRequested)}억 · {budgetDiff > 0 ? `${formatBudgetAmount(budgetDiff)}억 초과` : budgetDiff < 0 ? `${formatBudgetAmount(Math.abs(budgetDiff))}억 잔여` : '균형'}
               </p>
             </div>
           )}
@@ -819,10 +849,11 @@ function Phase3ExecutiveQuickPanel() {
             if (isCollaborative) {
               // 공동작업 모드 모니터링
               const policy = policiesMap?.[unit.groupId] || {}
-              const fields = policy.policyFields || {}
-              const status = policy.status
-              const budgetItems = Array.isArray(policy.budgetItems) ? policy.budgetItems : []
-              const requestedBudget = Number(policy.requestedBudget ?? policy.draftBudget) || 0
+              const resolved = resolvedPolicyContent(unit, policy)
+              const fields = resolved.policyFields || {}
+              const status = resolved.status
+              const budgetItems = Array.isArray(resolved.budgetItems) ? resolved.budgetItems : []
+              const requestedBudget = Number(resolved.requestedBudget) || 0
 
               let statusLabel = '❌ 작성 전'
               let statusColor = 'bg-gray-100 text-gray-500'
@@ -881,7 +912,7 @@ function Phase3ExecutiveQuickPanel() {
                     <p className="flex justify-between">
                       <span>• 예산청구:</span>
                       <span className="font-semibold text-slate-800">
-                        {requestedBudget > 0 ? `${requestedBudget}억 (항목 ${budgetItems.length}개)` : '❌ 미입력'}
+                        {requestedBudget > 0 ? `${formatBudgetAmount(requestedBudget)}억 (항목 ${budgetItems.length}개)` : '❌ 미입력'}
                       </span>
                     </p>
                   </div>
@@ -909,6 +940,8 @@ function Phase3ExecutiveQuickPanel() {
               const draft = draftsMap?.[unit.unitId] || {}
               const memberNotes = draft.memberNotes || {}
               const sections = draft.sections || {}
+              const policy = policiesMap?.[unit.groupId] || {}
+              const resolved = resolvedPolicyContent(unit, policy)
 
               // ① 역할및준비 단계 산출물: 워드클라우드 + 우리 부서 할 일
               const prep = draft.prep || {}
@@ -1028,10 +1061,10 @@ function Phase3ExecutiveQuickPanel() {
                       )}
                     </div>
                   )}
-                  {(draft.finalDoc?.status === 'locked' || ['submitted', 'requested', 'adjusted', 'final'].includes(policiesMap?.[unit.groupId]?.status)) && (
+                  {(draft.finalDoc?.status === 'locked' || ['submitted', 'requested', 'adjusted', 'final'].includes(resolved.status)) && (
                     <div className="flex gap-1 mt-1">
                       <button
-                        onClick={() => openPolicyDetail(unit, policiesMap?.[unit.groupId] || {})}
+                        onClick={() => openPolicyDetail(unit, policy)}
                         className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-indigo-200 text-indigo-600 bg-white hover:bg-indigo-50 transition"
                       >
                         📄 최종안 보기
@@ -1068,8 +1101,8 @@ function Phase3ExecutiveQuickPanel() {
                 {/* 제출된 예산 진단 줄 */}
                 <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-slate-500">
                   <span>제출상태: <b className="text-slate-700">{detail.status || '?'}</b></span>
-                  <span>requestedBudget: <b className={detail.rawBudget > 0 ? 'text-emerald-600' : 'text-rose-500'}>{detail.rawBudget ?? 0}억</b></span>
-                  <span>섹션예산합계: <b className={detail.sectionTotal > 0 ? 'text-emerald-600' : 'text-rose-500'}>{detail.sectionTotal ?? 0}억</b></span>
+                  <span>requestedBudget: <b className={detail.rawBudget > 0 ? 'text-emerald-600' : 'text-rose-500'}>{formatBudgetAmount(detail.rawBudget)}억</b></span>
+                  <span>섹션예산합계: <b className={detail.sectionTotal > 0 ? 'text-emerald-600' : 'text-rose-500'}>{formatBudgetAmount(detail.sectionTotal)}억</b></span>
                 </div>
                 {/* 정책 필드: 비어있지 않은 것만 모두 표시 */}
                 {(() => {
@@ -1139,7 +1172,7 @@ function Phase3ExecutiveQuickPanel() {
             {detail.budgetItems?.length > 0 ? (
               <div className="border-t pt-2">
                 <p className="font-bold text-emerald-700 text-xs mb-1">
-                  💰 예산 항목 (합계 {detail.budgetItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)}억)
+                  💰 예산 항목 (합계 {formatBudgetAmount(detail.budgetItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0))}억)
                   {detail.budgetSource === 'section' && <span className="ml-1 text-[10px] font-bold text-amber-600">· 모둠원 작성본 합산</span>}
                 </p>
                 {/* 역할(섹션)별로 나눠 작성된 예산이 있으면 역할별로 묶어 표시 */}
@@ -1147,12 +1180,12 @@ function Phase3ExecutiveQuickPanel() {
                   <div className="space-y-2">
                     {detail.sectionBudgetGroups.map((g) => (
                       <div key={g.key}>
-                        <p className="text-[11px] font-bold text-slate-500 mb-0.5">{g.label} <span className="text-emerald-600">({g.items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)}억)</span></p>
+                        <p className="text-[11px] font-bold text-slate-500 mb-0.5">{g.label} <span className="text-emerald-600">({formatBudgetAmount(g.items.reduce((s, it) => s + (Number(it?.amount) || 0), 0))}억)</span></p>
                         <ul className="space-y-1">
                           {g.items.map((it, i) => (
                             <li key={it.id || i} className="flex justify-between gap-2 text-[11px] bg-emerald-50 border border-emerald-100 rounded px-2 py-1">
                               <span className="truncate">{it.title || `항목 ${i + 1}`}{it.note ? ` · ${it.note}` : ''}</span>
-                              <span className="font-black text-emerald-700 shrink-0">{Number(it.amount) || 0}억</span>
+                              <span className="font-black text-emerald-700 shrink-0">{formatBudgetAmount(it.amount)}억</span>
                             </li>
                           ))}
                         </ul>
@@ -1164,7 +1197,7 @@ function Phase3ExecutiveQuickPanel() {
                     {detail.budgetItems.map((it, i) => (
                       <li key={it.id || i} className="flex justify-between gap-2 text-[11px] bg-emerald-50 border border-emerald-100 rounded px-2 py-1">
                         <span className="truncate">{it.title || `항목 ${i + 1}`}{it.note ? ` · ${it.note}` : ''}</span>
-                        <span className="font-black text-emerald-700 shrink-0">{Number(it.amount) || 0}억</span>
+                        <span className="font-black text-emerald-700 shrink-0">{formatBudgetAmount(it.amount)}억</span>
                       </li>
                     ))}
                   </ul>

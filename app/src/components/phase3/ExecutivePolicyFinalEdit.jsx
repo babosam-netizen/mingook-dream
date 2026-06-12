@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import useGameStore from '../../store/gameStore'
 import { subscribe, updateAt } from '../../lib/rtdb-helpers'
+import { formatBudgetAmount, roundBudgetAmount } from './executiveBudgetData'
 
 function budgetItemTotal(items = []) {
-  return Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 10) / 10
+  return roundBudgetAmount(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0))
 }
 
 /**
@@ -41,7 +42,7 @@ function ExecutivePolicyFinalEdit({ groupId }) {
           discussionReflection: pf.discussionReflection || '',
         })
         setBudgetItems(Array.isArray(d.budgetItems) ? d.budgetItems : [])
-        setRequestedBudget(Number(d.requestedBudget ?? d.draftBudget) || 0)
+        setRequestedBudget(roundBudgetAmount(d.requestedBudget ?? d.draftBudget))
       }
     })
     return () => u?.()
@@ -194,7 +195,7 @@ function ExecutivePolicyFinalEdit({ groupId }) {
           <span className="text-xs font-bold text-violet-700 mb-1">최종 청구 예산</span>
           <div className="flex items-baseline gap-1">
             <span className="text-3xl md:text-4xl font-black text-violet-950 tabular-nums tracking-tight">
-              {requestedBudget}
+              {formatBudgetAmount(requestedBudget)}
             </span>
             <span className="text-violet-800 text-base font-bold">억원</span>
           </div>
@@ -397,7 +398,7 @@ function ExecutivePolicyFinalEdit({ groupId }) {
             <div className="rounded-2xl bg-white p-4 border border-emerald-200 shadow-inner flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-500 block">항목 합계</span>
-                <span className="text-xl font-black text-emerald-950">{budgetItemsTotal} 억원</span>
+                <span className="text-xl font-black text-emerald-950">{formatBudgetAmount(budgetItemsTotal)} 억원</span>
               </div>
               <div className="text-right">
                 <span className="text-xs font-bold text-slate-500 block">최종 청구 예산</span>

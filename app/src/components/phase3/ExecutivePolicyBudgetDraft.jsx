@@ -1329,10 +1329,22 @@ export function ExecutiveFinalAssembler({
         if (econ.expectedEffect && !allFields.expectedEffect) allFields.expectedEffect = econ.expectedEffect
       } else {
         // ── 일반 부처 역할 중심 모드: 각 역할의 조항 초안을 제1조~제5조 순서로 조립 ──
-        const skel = sections?.skeleton?.content?.policyFields || {}
-        const dec  = sections?.decree?.content?.policyFields  || {}
-        const evid = sections?.evidence?.content?.policyFields || {}
-        const eff  = sections?.effect?.content?.policyFields  || {}
+        // 역할중심 섹션은 policyFields = { qna, text, links } 형태(질문 답변)로 저장되므로,
+        // 원시 필드가 없으면 qna(질문별 답변)를 해당 조항 필드로 변환해 읽는다.
+        const fieldsOf = (key) => {
+          const pf = sections?.[key]?.content?.policyFields || {}
+          const qna = pf.qna || {}
+          const Q = (i) => (typeof qna[i] === 'string' ? qna[i].trim() : '')
+          if (key === 'skeleton') return { title: pf.title || Q(0), purpose: pf.purpose || Q(1), problem: pf.problem || Q(1), targetCitizens: pf.targetCitizens || Q(2) }
+          if (key === 'decree')   return { content: pf.content || [Q(0), Q(1)].filter(Boolean).join('\n') }
+          if (key === 'evidence') return { evidence: pf.evidence || Q(0), publicConcern: pf.publicConcern || Q(1), publicResponse: pf.publicResponse || Q(2) }
+          if (key === 'effect')   return { expectedEffect: pf.expectedEffect || Q(0), discussionReflection: pf.discussionReflection || Q(1) }
+          return pf
+        }
+        const skel = fieldsOf('skeleton')
+        const dec  = fieldsOf('decree')
+        const evid = fieldsOf('evidence')
+        const eff  = fieldsOf('effect')
 
         // 정책명 (목적·대상 설계원이 작성)
         if (skel.title) allFields.title = skel.title

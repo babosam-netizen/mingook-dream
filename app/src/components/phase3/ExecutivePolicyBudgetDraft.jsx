@@ -1299,41 +1299,9 @@ export function ExecutiveFinalAssembler({
     const allFields = { ...emptyPolicyFields }
 
     if (!isCollaborative) {
-      const isPresidentGroup = config?.branchConfig?.executive?.presidentGroupId === groupId || groups?.[groupId]?.name?.includes('대통령')
-
-      if (isPresidentGroup) {
-        // ── 대통령 모둠: 대통령실 전용 역할의 초안을 조립 ──
-        const mod = sections?.cabinet_moderator?.content?.policyFields || {}
-        const supp = sections?.president_support?.content?.policyFields || {}
-        const disc = sections?.discussion_summary?.content?.policyFields || {}
-        const econ = sections?.economic_feasibility?.content?.policyFields || {}
-
-        if (mod.title) allFields.title = mod.title
-
-        const articleParts = []
-        if (mod.purpose || mod.problem) {
-          articleParts.push(`[국무회의 심의 및 최종 예산안 조율]\n${[mod.purpose, mod.problem].filter(Boolean).join('\n')}`)
-        }
-        if (supp.content) {
-          articleParts.push(`[대통령 보좌 및 국정 현안 요약]\n${supp.content}`)
-        }
-        if (disc.publicConcern || disc.publicResponse || disc.finalMessage) {
-          articleParts.push(`[여론 소통 및 정책토의 피드백 분석]\n${[disc.publicConcern, disc.publicResponse, disc.finalMessage].filter(Boolean).join('\n')}`)
-        }
-        if (econ.evidence || econ.expectedEffect || econ.finalScale) {
-          articleParts.push(`[정부 재정 분석 및 예산 타당성 평가]\n${[econ.evidence, econ.expectedEffect, econ.finalScale].filter(Boolean).join('\n')}`)
-        }
-
-        if (articleParts.length > 0) {
-          allFields.ordinance = articleParts.join('\n\n')
-        }
-
-        if (mod.problem && !allFields.evidence) allFields.evidence = mod.problem
-        if (disc.publicConcern && !allFields.publicConcern) allFields.publicConcern = disc.publicConcern
-        if (disc.publicResponse && !allFields.publicResponse) allFields.publicResponse = disc.publicResponse
-        if (econ.expectedEffect && !allFields.expectedEffect) allFields.expectedEffect = econ.expectedEffect
-      } else {
-        // ── 일반 부처 역할 중심 모드: 각 역할의 조항 초안을 제1조~제5조 순서로 조립 ──
+      {
+        // ── 일반 부처/대통령실 공통: 각 역할의 조항 초안을 제1조~제5조 순서로 조립 ──
+        // (대통령실도 역할이 skeleton/decree/evidence/effect로 통일되어 부처와 동일하게 처리)
         // 역할중심 섹션은 policyFields = { qna, text, links } 형태(질문 답변)로 저장되므로,
         // 원시 필드가 없으면 qna(질문별 답변)를 해당 조항 필드로 변환해 읽는다.
         // 역할중심 섹션은 qna(질문별 답변)로 저장 → 각 조항 필드로 변환해 읽는다.

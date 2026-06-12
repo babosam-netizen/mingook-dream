@@ -6,6 +6,9 @@
 
 ---
 
+## v1.6.8 (2026-06-08) [Claude] — 대통령실 대표 최종 검토/조립을 부처와 동일하게(옛 섹션키 제거)
+- `ExecutiveFinalAssembler.loadPreviewToEditor`의 대통령 전용 분기가 옛 키(cabinet_moderator 등) 읽어 빔 → 대통령 분기 제거, 부처 공통 분기(skeleton/decree/evidence/effect) 적용. `APP_BUILD` v1.6.8.
+
 ## v1.6.7 (2026-06-08) [Claude] — '작성본 모두 불러오기' 시 일부 내용 2번 들어가던 중복 수정
 - 제1조 조립이 purpose·problem(둘 다 qna[1]) 이어붙여 중복 → Set 중복 제거. 조립기 txt 폴백 제거(중복 유발). `APP_BUILD` v1.6.7.
 

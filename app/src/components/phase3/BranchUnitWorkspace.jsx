@@ -921,7 +921,8 @@ export default function BranchUnitWorkspace({
         }
       })
 
-      const resultBudgets = finalDoc?.content?.budgetItems ? finalBudgets : mergedBudgetItems
+      // 대표 finalDoc 예산이 '실제 항목이 있을 때만' 우선. 빈 배열([])이 모둠원 섹션 예산을 가리지 않도록 length로 판정.
+      const resultBudgets = (Array.isArray(finalBudgets) && finalBudgets.length > 0) ? finalBudgets : mergedBudgetItems
 
       return {
         ...(finalDoc || {}),

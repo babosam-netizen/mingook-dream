@@ -6,6 +6,9 @@
 
 ---
 
+## v1.7.1 (2026-06-08) [Claude] — 역할중심 제출 예산이 전광판 0으로 잡히던 근본 원인 수정(빈배열 truthy)
+- `mergedFinalDoc` 예산 병합이 `[] ? finalBudgets : merged`로 빈배열을 truthy 처리 → 대표 빈예산이 섹션예산 가림. `finalBudgets.length>0`로 수정. `APP_BUILD` v1.7.1.
+
 ## v1.7.0 (2026-06-08) [Claude] — 교사 빠른제어에서 초안/예산 작성 내용 클릭 확인
 - `Phase3ExecutiveQuickPanel` 상세 모달: 역할 카드 클릭→qna·링크·예산 확인, 공동작업 카드 "내용 확인"→정책·시행령·예산 확인. `APP_BUILD` v1.7.0.
 

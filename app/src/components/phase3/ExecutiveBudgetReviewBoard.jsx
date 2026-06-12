@@ -49,16 +49,24 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
     ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p.status)
   )
 
+  // 정책 예산액 — draftBudget/requestedBudget가 없으면 예산 항목(budgetItems) 합계로 계산
+  const budgetOf = (p) => {
+    const direct = Number(p?.requestedBudget ?? p?.draftBudget) || 0
+    if (direct > 0) return direct
+    const items = Array.isArray(p?.budgetItems) ? p.budgetItems : []
+    return items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+  }
+
   // 대통령 공약 예약분: 총예산에서 먼저 차감하고, 부처는 잔여분에서 조정한다.
   const presidentReserved = allPolicies
     .filter(isPresidentPolicy)
-    .reduce((sum, p) => sum + (Number(p.draftBudget) || 0), 0)
+    .reduce((sum, p) => sum + budgetOf(p), 0)
   const ministryCap = Math.max(0, totalCap - presidentReserved)
 
   // 부처(대통령실 제외) 청구액 합계
   const totalRequested = allPolicies
     .filter((p) => !isPresidentPolicy(p))
-    .reduce((sum, p) => sum + (Number(p.draftBudget) || 0), 0)
+    .reduce((sum, p) => sum + budgetOf(p), 0)
   const diff = totalRequested - ministryCap
   const isExcess = diff > 0
   const pct = ministryCap > 0 ? Math.round((totalRequested / ministryCap) * 100) : 0
@@ -192,7 +200,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
                     <span className="text-xs font-bold text-amber-400/90 mb-1">예산 청구액</span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl md:text-5xl font-black text-amber-300 tabular-nums tracking-tight">
-                        {policy.draftBudget || 0}
+                        {budgetOf(policy)}
                       </span>
                       <span className="text-amber-200/80 text-lg font-bold">억원</span>
                     </div>

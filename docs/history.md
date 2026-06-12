@@ -6,6 +6,9 @@
 
 ---
 
+## v1.6.9 (2026-06-08) [Claude] — 예산 전광판이 제출 정책 예산 반영 안하던 문제(예산항목 합계 폴백)
+- `ExecutiveBudgetReviewBoard`가 `p.draftBudget`만 읽어 일부 제출건이 0. `budgetOf`로 requestedBudget/draftBudget 없으면 budgetItems 합계 사용. `APP_BUILD` v1.6.9.
+
 ## v1.6.8 (2026-06-08) [Claude] — 대통령실 대표 최종 검토/조립을 부처와 동일하게(옛 섹션키 제거)
 - `ExecutiveFinalAssembler.loadPreviewToEditor`의 대통령 전용 분기가 옛 키(cabinet_moderator 등) 읽어 빔 → 대통령 분기 제거, 부처 공통 분기(skeleton/decree/evidence/effect) 적용. `APP_BUILD` v1.6.8.
 

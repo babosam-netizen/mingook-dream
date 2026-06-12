@@ -16,6 +16,7 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
   const [policiesMap, setPoliciesMap] = useState({})
   const [roomData, setRoomData] = useState(null)
   const [groups, setGroups] = useState({})
+  const [draftsMap, setDraftsMap] = useState({})
 
   // 실시간 구독
   useEffect(() => {
@@ -23,7 +24,8 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
     const u1 = subscribe(roomCode, 'policies', (d) => setPoliciesMap(d || {}))
     const u2 = subscribe(roomCode, '', (d) => setRoomData(d || null))
     const u3 = subscribe(roomCode, 'groups', (d) => setGroups(d || {}))
-    return () => { u1?.(); u2?.(); u3?.() }
+    const u4 = subscribe(roomCode, 'branchDrafts', (d) => setDraftsMap(d || {}))
+    return () => { u1?.(); u2?.(); u3?.(); u4?.() }
   }, [roomCode])
 
   if (!roomCode) {
@@ -49,12 +51,27 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
     ['saved', 'submitted', 'requested', 'adjusted', 'final'].includes(p.status)
   )
 
-  // 정책 예산액 — draftBudget/requestedBudget가 없으면 예산 항목(budgetItems) 합계로 계산
+  // 정책에 예산이 안 실렸을 때, 모둠원 섹션(branchDrafts) 예산을 직접 합산하는 폴백
+  const unitIdOf = (p) =>
+    p?.branchUnitId || (branchConfig.executive?.units || []).find((u) => u.groupId === p?.groupId)?.unitId || null
+  const sectionBudgetOf = (unitId) => {
+    if (!unitId) return 0
+    const secs = draftsMap?.[unitId]?.sections || {}
+    let sum = 0
+    Object.values(secs).forEach((sec) => {
+      const items = sec?.content?.budgetItems
+      if (Array.isArray(items)) sum += items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+    })
+    return sum
+  }
+  // 정책 예산액 — requestedBudget/draftBudget → policy.budgetItems 합계 → 섹션 예산 합계 순으로 폴백
   const budgetOf = (p) => {
     const direct = Number(p?.requestedBudget ?? p?.draftBudget) || 0
     if (direct > 0) return direct
     const items = Array.isArray(p?.budgetItems) ? p.budgetItems : []
-    return items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+    const itemSum = items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+    if (itemSum > 0) return itemSum
+    return sectionBudgetOf(unitIdOf(p))
   }
 
   // 대통령 공약 예약분: 총예산에서 먼저 차감하고, 부처는 잔여분에서 조정한다.
@@ -165,7 +182,10 @@ function ExecutiveBudgetReviewBoard({ roomCodeProp }) {
             const g = groups?.[policy.groupId]
             const ministryName = policy.ministryName || `${g?.name || '부처'}부`
             const fields = policy.policyFields || {}
-            const budgetItems = policy.budgetItems || []
+            // 정책에 예산 항목이 없으면 모둠원 섹션 예산 항목을 모아서 표시
+            const budgetItems = (Array.isArray(policy.budgetItems) && policy.budgetItems.length > 0)
+              ? policy.budgetItems
+              : Object.values(draftsMap?.[unitIdOf(policy)]?.sections || {}).flatMap((sec) => Array.isArray(sec?.content?.budgetItems) ? sec.content.budgetItems : [])
 
             return (
               <article

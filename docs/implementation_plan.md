@@ -14,6 +14,7 @@
 
 | 수정명(이름) | 날짜 | 상태 | 요약 / 다음에 할 일 | 관련 |
 |---|---|---|---|---|
+| 전광판 섹션 예산(branchDrafts) 폴백 합산 | 2026-06-08 | ✅ 수정완료 | 정책 예산 비면 섹션 예산 합계로 표시(`budgetOf` 폴백). | v1.7.2 |
 | 역할중심 제출 예산이 전광판 0(빈배열 truthy) | 2026-06-08 | ✅ 수정완료 | `mergedFinalDoc` resultBudgets를 finalBudgets.length>0로 판정. | v1.7.1 |
 | 교사 빠른제어 초안/예산 작성내용 클릭 확인 | 2026-06-08 | ✅ 수정완료 | `Phase3ExecutiveQuickPanel` 상세 모달(역할 카드/공동작업 카드 클릭). | v1.7.0 |
 | 예산 전광판 제출정책 예산 반영(항목합계 폴백) | 2026-06-08 | ✅ 수정완료 | `ExecutiveBudgetReviewBoard` budgetOf — draftBudget 없으면 budgetItems 합계. | v1.6.9 |

@@ -6,6 +6,9 @@
 
 ---
 
+## v1.7.2 (2026-06-08) [Claude] — 전광판이 모둠원 섹션 예산(branchDrafts) 폴백 합산
+- 정책에 예산 미반영 시에도 보이도록 전광판이 branchDrafts 구독→섹션 예산 합계 폴백(`budgetOf`/`unitIdOf`/`sectionBudgetOf`). `APP_BUILD` v1.7.2.
+
 ## v1.7.1 (2026-06-08) [Claude] — 역할중심 제출 예산이 전광판 0으로 잡히던 근본 원인 수정(빈배열 truthy)
 - `mergedFinalDoc` 예산 병합이 `[] ? finalBudgets : merged`로 빈배열을 truthy 처리 → 대표 빈예산이 섹션예산 가림. `finalBudgets.length>0`로 수정. `APP_BUILD` v1.7.1.
 

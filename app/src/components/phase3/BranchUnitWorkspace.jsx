@@ -197,7 +197,8 @@ export default function BranchUnitWorkspace({
       setDraftField(mapped, 'purpose', q(1))
       setDraftField(mapped, 'targetCitizens', q(2))
     } else if (sectionKey === 'decree') {
-      setDraftField(mapped, 'content', q(0))
+      // 제3조 시행절차: 담당 기관(q0) + 집행 순서(q1)를 모두 content에 담는다.
+      setDraftField(mapped, 'content', [q(0), q(1)].filter(Boolean).join('\n'))
     } else if (sectionKey === 'evidence') {
       setDraftField(mapped, 'evidence', q(0))
       setDraftField(mapped, 'publicConcern', q(1), { append: true })
@@ -965,6 +966,12 @@ export default function BranchUnitWorkspace({
   const renderExecutiveAssemblyDraft = (draftDoc) => {
     const fields = draftDoc?.content?.policyFields || {}
     const budgetItems = draftDoc?.content?.budgetItems || []
+    // 매핑이 비더라도 해당 섹션의 원문(질문-답변 text)을 폴백으로 보여줘 빠진 부분이 없게 한다.
+    const sectionTextOf = (key) => {
+      const c = sections?.[key]?.content
+      const pf = (c && typeof c === 'object') ? (c.policyFields || {}) : {}
+      return cleanDraftText(pf.text || (c && typeof c === 'object' ? c.text : c) || '')
+    }
     const sectionBudget = (keys) => budgetItems.filter((item) => keys.includes(item.sourceSectionKey || 'budget'))
     const renderText = (value, placeholder = '아직 작성되지 않았습니다.') => (
       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -1000,7 +1007,7 @@ export default function BranchUnitWorkspace({
           <>
             <div>
               <p className="text-[11px] font-bold text-slate-500">시행령 목적과 배경 근거</p>
-              {renderText(fields.problem || fields.purpose)}
+              {renderText(fields.problem || fields.purpose || sectionTextOf('skeleton'))}
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-500">대상 및 범위</p>
@@ -1017,12 +1024,14 @@ export default function BranchUnitWorkspace({
           <>
             <div>
               <p className="text-[11px] font-bold text-slate-500">담당 기관·일정·집행 순서</p>
-              {renderText(fields.content)}
+              {renderText(fields.content || sectionTextOf('decree'))}
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-slate-500">현장 운영 조건</p>
-              {renderText(fields.ordinance)}
-            </div>
+            {fields.ordinance && (
+              <div>
+                <p className="text-[11px] font-bold text-slate-500">현장 운영 조건</p>
+                {renderText(fields.ordinance)}
+              </div>
+            )}
           </>
         ),
       },
@@ -1034,7 +1043,7 @@ export default function BranchUnitWorkspace({
           <>
             <div>
               <p className="text-[11px] font-bold text-slate-500">지원 방식과 산출 근거</p>
-              {renderText(fields.evidence || fields.support)}
+              {renderText(fields.evidence || fields.support || sectionTextOf('evidence'))}
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-500">우려와 조정 기준</p>
@@ -1051,7 +1060,7 @@ export default function BranchUnitWorkspace({
           <>
             <div>
               <p className="text-[11px] font-bold text-slate-500">기대효과와 피해 가능성</p>
-              {renderText(fields.expectedEffect)}
+              {renderText(fields.expectedEffect || sectionTextOf('effect'))}
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-500">점검 기준·예외·보완책</p>

@@ -1335,10 +1335,11 @@ export function ExecutiveFinalAssembler({
           const pf = sections?.[key]?.content?.policyFields || {}
           const qna = pf.qna || {}
           const Q = (i) => (typeof qna[i] === 'string' ? qna[i].trim() : '')
-          if (key === 'skeleton') return { title: pf.title || Q(0), purpose: pf.purpose || Q(1), problem: pf.problem || Q(1), targetCitizens: pf.targetCitizens || Q(2) }
-          if (key === 'decree')   return { content: pf.content || [Q(0), Q(1)].filter(Boolean).join('\n') }
-          if (key === 'evidence') return { evidence: pf.evidence || Q(0), publicConcern: pf.publicConcern || Q(1), publicResponse: pf.publicResponse || Q(2) }
-          if (key === 'effect')   return { expectedEffect: pf.expectedEffect || Q(0), discussionReflection: pf.discussionReflection || Q(1) }
+          const txt = typeof pf.text === 'string' ? pf.text.trim() : '' // 매핑이 비면 원문(질문-답변) 폴백
+          if (key === 'skeleton') return { title: pf.title || Q(0), purpose: pf.purpose || Q(1) || txt, problem: pf.problem || Q(1), targetCitizens: pf.targetCitizens || Q(2) }
+          if (key === 'decree')   return { content: pf.content || [Q(0), Q(1)].filter(Boolean).join('\n') || txt }
+          if (key === 'evidence') return { evidence: pf.evidence || Q(0) || txt, publicConcern: pf.publicConcern || Q(1), publicResponse: pf.publicResponse || Q(2) }
+          if (key === 'effect')   return { expectedEffect: pf.expectedEffect || Q(0) || txt, discussionReflection: pf.discussionReflection || Q(1) }
           return pf
         }
         const skel = fieldsOf('skeleton')

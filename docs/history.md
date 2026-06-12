@@ -6,6 +6,9 @@
 
 ---
 
+## v1.6.5 (2026-06-07) [Claude] — 역할중심 통합 미리보기 누락(특히 제3조 시행절차) 수정 + 원문 폴백
+- decree 매핑 `content=q0`만→`q0+q1`로 합침(q1 순서 누락 수정). `renderExecutiveAssemblyDraft`/`ExecutiveFinalAssembler`에 섹션 원문(text) 폴백 추가(매핑 비어도 답 표시). `APP_BUILD` v1.6.5.
+
 ## v1.6.4 (2026-06-07) [Claude] — 역할중심 시행령 최종 조립/미리보기에서 1~5조가 비던 버그 수정
 - 원인: 역할중심 섹션은 policyFields={qna,text,links}로 저장되는데 `ExecutiveFinalAssembler`가 원시 필드(purpose/content/evidence) 직접 읽어 빔. 수정: 조립기에 qna→조항필드 변환 `fieldsOf` 추가. `APP_BUILD` v1.6.4.
 

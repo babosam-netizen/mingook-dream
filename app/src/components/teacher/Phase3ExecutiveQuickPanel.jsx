@@ -189,6 +189,35 @@ function Phase3ExecutiveQuickPanel() {
   const [debateSessions, setDebateSessions] = useState({})
   const [draftsMap, setDraftsMap] = useState({})
   const [bulkSubmitMarker, setBulkSubmitMarker] = useState(false)
+  const [detail, setDetail] = useState(null) // 교사 확인용 상세 보기 모달
+
+  // 역할별 섹션 초안 상세 열기
+  const openSectionDetail = (unit, roleDef, student, section) => {
+    const pf = section?.content?.policyFields || {}
+    setDetail({
+      title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} · ${roleDef.emoji || ''} ${roleDef.label}`,
+      who: student ? `${student.number ? `${student.number}번 ` : ''}${student.nickname}` : '미배정',
+      memoGuide: roleDef.memoGuide || [],
+      qna: pf.qna || {},
+      text: pf.text || '',
+      links: Array.isArray(pf.links) ? pf.links : [],
+      budgetItems: Array.isArray(section?.content?.budgetItems) ? section.content.budgetItems : [],
+      status: section?.status,
+    })
+  }
+  // 부처 최종 정책(제출본) 상세 열기
+  const openPolicyDetail = (unit, policy) => {
+    const f = policy?.policyFields || {}
+    setDetail({
+      title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} — ${f.title || '정책안'}`,
+      who: policy?.status === 'submitted' ? '제출 완료' : policy?.status === 'requested' ? '청구 확정' : (policy?.status || ''),
+      fields: f,
+      links: [],
+      budgetItems: Array.isArray(policy?.budgetItems) ? policy.budgetItems : [],
+      status: policy?.status,
+      isPolicy: true,
+    })
+  }
 
   useEffect(() => {
     if (!roomCode) return
@@ -777,13 +806,24 @@ function Phase3ExecutiveQuickPanel() {
 
               return (
                 <div key={unit.unitId} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                    <span className="font-extrabold text-slate-800">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
+                    <span className="font-extrabold text-slate-800 min-w-0 truncate">
                       🏢 {unit.ministryName} <span className="font-medium text-slate-500 text-[10px]">({groupName})</span>
                     </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${statusColor}`}>
-                      {statusLabel}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${statusColor}`}>
+                        {statusLabel}
+                      </span>
+                      {(fields.title || fields.ordinance || budgetItems.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => openPolicyDetail(unit, policy)}
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-600 text-white font-bold hover:bg-indigo-700"
+                        >
+                          👁 내용 확인
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1 text-[11px] text-slate-600">
                     <p className="flex justify-between">
@@ -883,14 +923,23 @@ function Phase3ExecutiveQuickPanel() {
                       const isSecDone = section && section.status === 'ready'
                       const isSecWriting = (hasFields || hasBudgets) && !isSecDone
 
+                      const hasAny = isSecDone || isSecWriting
                       return (
-                        <div key={roleDef.key} className={`bg-white border rounded px-2 py-1.5 flex-1 min-w-[150px] space-y-0.5 ${roleDef.isRepresentative ? 'border-amber-300' : 'border-slate-200'}`}>
+                        <button
+                          key={roleDef.key}
+                          type="button"
+                          onClick={() => openSectionDetail(unit, roleDef, student, section)}
+                          disabled={!hasAny}
+                          title={hasAny ? '클릭하면 작성 내용을 확인합니다' : '아직 작성 내용이 없습니다'}
+                          className={`text-left bg-white border rounded px-2 py-1.5 flex-1 min-w-[150px] space-y-0.5 transition ${roleDef.isRepresentative ? 'border-amber-300' : 'border-slate-200'} ${hasAny ? 'hover:bg-indigo-50 hover:border-indigo-300 cursor-pointer' : 'opacity-80 cursor-default'}`}
+                        >
                           {/* 1줄: 역할명 + 대표 배지 */}
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-slate-500 truncate">{roleDef.emoji} {roleDef.label}</span>
                             {roleDef.isRepresentative && (
                               <span className="text-[8px] px-1 py-px rounded-full bg-amber-100 text-amber-700 font-black shrink-0 border border-amber-200">대표</span>
                             )}
+                            {hasAny && <span className="ml-auto text-[9px] text-indigo-400 shrink-0">👁 보기</span>}
                           </div>
                           {/* 2줄: 배정된 학생 이름(크게) + 상태 배지 */}
                           <div className="flex items-center justify-between gap-1.5">
@@ -907,7 +956,7 @@ function Phase3ExecutiveQuickPanel() {
                               </span>
                             )}
                           </div>
-                        </div>
+                        </button>
                       )
                     })}
                   </div>
@@ -949,6 +998,64 @@ function Phase3ExecutiveQuickPanel() {
           })}
         </div>
       </div>
+
+      {/* 교사 확인용 상세 보기 모달 */}
+      {detail && (
+        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2 border-b pb-2">
+              <div className="min-w-0">
+                <h3 className="text-sm font-black text-slate-900 break-words">{detail.title}</h3>
+                {detail.who && <p className="text-[11px] text-slate-500">{detail.who}</p>}
+              </div>
+              <button onClick={() => setDetail(null)} className="text-slate-400 hover:text-slate-700 text-lg leading-none shrink-0">✕</button>
+            </div>
+
+            {detail.isPolicy ? (
+              <div className="space-y-2 text-xs">
+                {detail.fields?.ordinance && <div><p className="font-bold text-slate-600">📜 시행령</p><p className="whitespace-pre-wrap text-slate-800 bg-slate-50 rounded p-2">{detail.fields.ordinance}</p></div>}
+                {detail.fields?.problem && <div><p className="font-bold text-slate-600">문제·배경</p><p className="whitespace-pre-wrap text-slate-800">{detail.fields.problem}</p></div>}
+                {detail.fields?.content && <div><p className="font-bold text-slate-600">집행계획</p><p className="whitespace-pre-wrap text-slate-800">{detail.fields.content}</p></div>}
+                {detail.fields?.evidence && <div><p className="font-bold text-slate-600">근거·사례</p><p className="whitespace-pre-wrap text-slate-800">{detail.fields.evidence}</p></div>}
+                {(detail.fields?.publicConcern || detail.fields?.publicResponse) && <div><p className="font-bold text-slate-600">국민 눈높이</p><p className="whitespace-pre-wrap text-slate-800">{[detail.fields.publicConcern, detail.fields.publicResponse].filter(Boolean).join('\n')}</p></div>}
+              </div>
+            ) : (
+              <div className="space-y-2 text-xs">
+                {detail.memoGuide?.length > 0 ? (
+                  detail.memoGuide.map((q, i) => (
+                    <div key={i}>
+                      <p className="font-bold text-slate-600">{q}</p>
+                      <p className="whitespace-pre-wrap text-slate-800 bg-slate-50 rounded p-2">{detail.qna?.[i] || <span className="text-slate-300 italic">(미작성)</span>}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="whitespace-pre-wrap text-slate-800 bg-slate-50 rounded p-2">{detail.text || '(내용 없음)'}</p>
+                )}
+                {detail.links?.length > 0 && (
+                  <div>
+                    <p className="font-bold text-slate-600">🔗 참고 링크</p>
+                    <ul className="space-y-0.5">{detail.links.map((l, i) => <li key={i}><a href={l.url || l} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">🔗 {l.url || l}</a></li>)}</ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {detail.budgetItems?.length > 0 && (
+              <div className="border-t pt-2">
+                <p className="font-bold text-emerald-700 text-xs mb-1">💰 예산 항목 (합계 {detail.budgetItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)}억)</p>
+                <ul className="space-y-1">
+                  {detail.budgetItems.map((it, i) => (
+                    <li key={it.id || i} className="flex justify-between gap-2 text-[11px] bg-emerald-50 border border-emerald-100 rounded px-2 py-1">
+                      <span className="truncate">{it.title || `항목 ${i + 1}`}{it.note ? ` · ${it.note}` : ''}</span>
+                      <span className="font-black text-emerald-700 shrink-0">{Number(it.amount) || 0}억</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   )
 }

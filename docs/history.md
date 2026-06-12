@@ -6,6 +6,9 @@
 
 ---
 
+## v1.7.0 (2026-06-08) [Claude] — 교사 빠른제어에서 초안/예산 작성 내용 클릭 확인
+- `Phase3ExecutiveQuickPanel` 상세 모달: 역할 카드 클릭→qna·링크·예산 확인, 공동작업 카드 "내용 확인"→정책·시행령·예산 확인. `APP_BUILD` v1.7.0.
+
 ## v1.6.9 (2026-06-08) [Claude] — 예산 전광판이 제출 정책 예산 반영 안하던 문제(예산항목 합계 폴백)
 - `ExecutiveBudgetReviewBoard`가 `p.draftBudget`만 읽어 일부 제출건이 0. `budgetOf`로 requestedBudget/draftBudget 없으면 budgetItems 합계 사용. `APP_BUILD` v1.6.9.
 

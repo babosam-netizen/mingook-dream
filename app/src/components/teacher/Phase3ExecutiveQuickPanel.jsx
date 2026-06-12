@@ -6,6 +6,14 @@ import { preserveWindowScrollAfter } from '../../lib/preserve-scroll'
 import { MULTI_PARTY_STAGES } from '../debate/tools/DebateTimer'
 import { DEFAULT_ROLES, normalizeRoleList } from '../../lib/scaffolding-data'
 
+// 행정부 섹션 키 → 라벨 (예산 모음 표시용)
+const SECTION_LABELS = {
+  skeleton: '제1조 목적·제2조 대상',
+  decree: '제3조 시행 절차',
+  evidence: '제4조 지원 내용·재원',
+  effect: '제4조 벌칙·기대효과',
+}
+
 const CABINET_PRE_OPTIONS = [
   { id: 'keep', label: '대체로 유지' },
   { id: 'cut', label: '일부 감액' },
@@ -205,15 +213,31 @@ function Phase3ExecutiveQuickPanel() {
       status: section?.status,
     })
   }
-  // 부처 최종 정책(제출본) 상세 열기
+  // 부처 모둠원들이 각 섹션에 저장한 예산 항목을 모음(역할 라벨 포함)
+  const sectionBudgetGroups = (unit) => {
+    const secs = draftsMap?.[unit?.unitId]?.sections || {}
+    return Object.entries(secs)
+      .map(([key, sec]) => ({
+        key,
+        label: SECTION_LABELS[key] || key,
+        items: Array.isArray(sec?.content?.budgetItems) ? sec.content.budgetItems : [],
+      }))
+      .filter((g) => g.items.length > 0)
+  }
+  // 부처 최종 정책(제출본) 상세 열기 — 정책에 예산이 없으면 섹션 예산으로 폴백
   const openPolicyDetail = (unit, policy) => {
     const f = policy?.policyFields || {}
+    const policyBudget = Array.isArray(policy?.budgetItems) ? policy.budgetItems : []
+    const secGroups = sectionBudgetGroups(unit)
+    const secFlat = secGroups.flatMap((g) => g.items)
     setDetail({
       title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} — ${f.title || '정책안'}`,
       who: policy?.status === 'submitted' ? '제출 완료' : policy?.status === 'requested' ? '청구 확정' : (policy?.status || ''),
       fields: f,
       links: [],
-      budgetItems: Array.isArray(policy?.budgetItems) ? policy.budgetItems : [],
+      budgetItems: policyBudget.length > 0 ? policyBudget : secFlat,
+      budgetSource: policyBudget.length > 0 ? 'policy' : (secFlat.length > 0 ? 'section' : 'none'),
+      sectionBudgetGroups: secGroups,
       status: policy?.status,
       isPolicy: true,
     })
@@ -850,12 +874,20 @@ function Phase3ExecutiveQuickPanel() {
                     </p>
                   </div>
                   {['submitted', 'requested', 'adjusted', 'final'].includes(status) && (
-                    <button
-                      onClick={() => cancelSubmission(unit)}
-                      className="w-full mt-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition"
-                    >
-                      ↩️ 제출 취소 (다시 제출 허용)
-                    </button>
+                    <div className="flex gap-1 mt-1">
+                      <button
+                        onClick={() => openPolicyDetail(unit, policy)}
+                        className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-indigo-200 text-indigo-600 bg-white hover:bg-indigo-50 transition"
+                      >
+                        📄 최종안 보기
+                      </button>
+                      <button
+                        onClick={() => cancelSubmission(unit)}
+                        className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition"
+                      >
+                        ↩️ 제출 취소
+                      </button>
+                    </div>
                   )}
                 </div>
               )
@@ -985,12 +1017,20 @@ function Phase3ExecutiveQuickPanel() {
                     </div>
                   )}
                   {(draft.finalDoc?.status === 'locked' || ['submitted', 'requested', 'adjusted', 'final'].includes(policiesMap?.[unit.groupId]?.status)) && (
-                    <button
-                      onClick={() => cancelSubmission(unit)}
-                      className="w-full mt-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition"
-                    >
-                      ↩️ 제출 취소 (다시 제출 허용)
-                    </button>
+                    <div className="flex gap-1 mt-1">
+                      <button
+                        onClick={() => openPolicyDetail(unit, policiesMap?.[unit.groupId] || {})}
+                        className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-indigo-200 text-indigo-600 bg-white hover:bg-indigo-50 transition"
+                      >
+                        📄 최종안 보기
+                      </button>
+                      <button
+                        onClick={() => cancelSubmission(unit)}
+                        className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition"
+                      >
+                        ↩️ 제출 취소
+                      </button>
+                    </div>
                   )}
                 </div>
               )
@@ -1040,19 +1080,45 @@ function Phase3ExecutiveQuickPanel() {
               </div>
             )}
 
-            {detail.budgetItems?.length > 0 && (
+            {detail.budgetItems?.length > 0 ? (
               <div className="border-t pt-2">
-                <p className="font-bold text-emerald-700 text-xs mb-1">💰 예산 항목 (합계 {detail.budgetItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)}억)</p>
-                <ul className="space-y-1">
-                  {detail.budgetItems.map((it, i) => (
-                    <li key={it.id || i} className="flex justify-between gap-2 text-[11px] bg-emerald-50 border border-emerald-100 rounded px-2 py-1">
-                      <span className="truncate">{it.title || `항목 ${i + 1}`}{it.note ? ` · ${it.note}` : ''}</span>
-                      <span className="font-black text-emerald-700 shrink-0">{Number(it.amount) || 0}억</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="font-bold text-emerald-700 text-xs mb-1">
+                  💰 예산 항목 (합계 {detail.budgetItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)}억)
+                  {detail.budgetSource === 'section' && <span className="ml-1 text-[10px] font-bold text-amber-600">· 모둠원 작성본 합산</span>}
+                </p>
+                {/* 역할(섹션)별로 나눠 작성된 예산이 있으면 역할별로 묶어 표시 */}
+                {detail.isPolicy && Array.isArray(detail.sectionBudgetGroups) && detail.sectionBudgetGroups.length > 0 ? (
+                  <div className="space-y-2">
+                    {detail.sectionBudgetGroups.map((g) => (
+                      <div key={g.key}>
+                        <p className="text-[11px] font-bold text-slate-500 mb-0.5">{g.label} <span className="text-emerald-600">({g.items.reduce((s, it) => s + (Number(it?.amount) || 0), 0)}억)</span></p>
+                        <ul className="space-y-1">
+                          {g.items.map((it, i) => (
+                            <li key={it.id || i} className="flex justify-between gap-2 text-[11px] bg-emerald-50 border border-emerald-100 rounded px-2 py-1">
+                              <span className="truncate">{it.title || `항목 ${i + 1}`}{it.note ? ` · ${it.note}` : ''}</span>
+                              <span className="font-black text-emerald-700 shrink-0">{Number(it.amount) || 0}억</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="space-y-1">
+                    {detail.budgetItems.map((it, i) => (
+                      <li key={it.id || i} className="flex justify-between gap-2 text-[11px] bg-emerald-50 border border-emerald-100 rounded px-2 py-1">
+                        <span className="truncate">{it.title || `항목 ${i + 1}`}{it.note ? ` · ${it.note}` : ''}</span>
+                        <span className="font-black text-emerald-700 shrink-0">{Number(it.amount) || 0}억</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            )}
+            ) : detail.isPolicy ? (
+              <div className="border-t pt-2">
+                <p className="text-[11px] text-rose-500 font-bold">💰 예산 항목이 없습니다. (모둠원이 예산을 저장하지 않았거나 금액이 0)</p>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

@@ -6,6 +6,9 @@
 
 ---
 
+## v1.7.3 (2026-06-08) [Claude] — 교사 빠른제어: 최종안 보기 버튼 + 부처/역할별 예산안 표시
+- 부처 카드 [제출 취소] 옆 [📄 최종안 보기] 추가. `openPolicyDetail` 섹션 예산 폴백+역할별 분리 표시, 예산 없으면 명시. `APP_BUILD` v1.7.3.
+
 ## v1.7.2 (2026-06-08) [Claude] — 전광판이 모둠원 섹션 예산(branchDrafts) 폴백 합산
 - 정책에 예산 미반영 시에도 보이도록 전광판이 branchDrafts 구독→섹션 예산 합계 폴백(`budgetOf`/`unitIdOf`/`sectionBudgetOf`). `APP_BUILD` v1.7.2.
 

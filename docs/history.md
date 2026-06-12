@@ -6,6 +6,9 @@
 
 ---
 
+## v1.6.7 (2026-06-08) [Claude] — '작성본 모두 불러오기' 시 일부 내용 2번 들어가던 중복 수정
+- 제1조 조립이 purpose·problem(둘 다 qna[1]) 이어붙여 중복 → Set 중복 제거. 조립기 txt 폴백 제거(중복 유발). `APP_BUILD` v1.6.7.
+
 ## v1.6.6 (2026-06-07) [Claude] — 대표 최종 검토 '작성본 모두 불러오기' 설명·경고·저장 개선
 - `ExecutiveFinalAssembler` 불러오기 버튼명/설명 추가, 직접 다듬은 내용 있으면 confirm 후 새로 불러오기(finalDoc 병합 제거), 불러온 즉시 onSaveDraft 저장. `APP_BUILD` v1.6.6.
 

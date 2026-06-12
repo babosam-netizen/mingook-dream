@@ -1,2 +1,2 @@
-export const APP_BUILD = 'v1.6.6'
-export const BUILD_DATE = '2026-06-07 22:30'
+export const APP_BUILD = 'v1.6.7'
+export const BUILD_DATE = '2026-06-08 09:00'

@@ -1336,15 +1336,16 @@ export function ExecutiveFinalAssembler({
         // ── 일반 부처 역할 중심 모드: 각 역할의 조항 초안을 제1조~제5조 순서로 조립 ──
         // 역할중심 섹션은 policyFields = { qna, text, links } 형태(질문 답변)로 저장되므로,
         // 원시 필드가 없으면 qna(질문별 답변)를 해당 조항 필드로 변환해 읽는다.
+        // 역할중심 섹션은 qna(질문별 답변)로 저장 → 각 조항 필드로 변환해 읽는다.
+        // (모든 질문이 매핑되므로 원문 text 폴백은 쓰지 않음 — 중복 방지)
         const fieldsOf = (key) => {
           const pf = sections?.[key]?.content?.policyFields || {}
           const qna = pf.qna || {}
           const Q = (i) => (typeof qna[i] === 'string' ? qna[i].trim() : '')
-          const txt = typeof pf.text === 'string' ? pf.text.trim() : '' // 매핑이 비면 원문(질문-답변) 폴백
-          if (key === 'skeleton') return { title: pf.title || Q(0), purpose: pf.purpose || Q(1) || txt, problem: pf.problem || Q(1), targetCitizens: pf.targetCitizens || Q(2) }
-          if (key === 'decree')   return { content: pf.content || [Q(0), Q(1)].filter(Boolean).join('\n') || txt }
-          if (key === 'evidence') return { evidence: pf.evidence || Q(0) || txt, publicConcern: pf.publicConcern || Q(1), publicResponse: pf.publicResponse || Q(2) }
-          if (key === 'effect')   return { expectedEffect: pf.expectedEffect || Q(0) || txt, discussionReflection: pf.discussionReflection || Q(1) }
+          if (key === 'skeleton') return { title: pf.title || Q(0), purpose: pf.purpose || Q(1), problem: pf.problem || Q(1), targetCitizens: pf.targetCitizens || Q(2) }
+          if (key === 'decree')   return { content: pf.content || [Q(0), Q(1)].filter(Boolean).join('\n') }
+          if (key === 'evidence') return { evidence: pf.evidence || Q(0), publicConcern: pf.publicConcern || Q(1), publicResponse: pf.publicResponse || Q(2) }
+          if (key === 'effect')   return { expectedEffect: pf.expectedEffect || Q(0), discussionReflection: pf.discussionReflection || Q(1) }
           return pf
         }
         const skel = fieldsOf('skeleton')
@@ -1357,8 +1358,10 @@ export function ExecutiveFinalAssembler({
 
         // 제1조~제5조 텍스트 조립
         const articleParts = []
-        if (skel.purpose || skel.problem) {
-          articleParts.push(`제1조 (목적)\n${[skel.purpose, skel.problem].filter(Boolean).join('\n')}`)
+        // skeleton의 purpose·problem이 같은 답변(qna[1])을 가리킬 수 있으므로 중복 제거
+        const purposeBody = [...new Set([skel.purpose, skel.problem].filter((v) => v && v.trim()))].join('\n')
+        if (purposeBody) {
+          articleParts.push(`제1조 (목적)\n${purposeBody}`)
         }
         if (skel.targetCitizens) {
           articleParts.push(`제2조 (대상·범위)\n${skel.targetCitizens}`)

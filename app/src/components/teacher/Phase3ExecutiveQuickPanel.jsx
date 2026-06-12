@@ -230,14 +230,26 @@ function Phase3ExecutiveQuickPanel() {
     const policyBudget = Array.isArray(policy?.budgetItems) ? policy.budgetItems : []
     const secGroups = sectionBudgetGroups(unit)
     const secFlat = secGroups.flatMap((g) => g.items)
+    // 섹션 텍스트(policyFields가 비었을 때 원본 내용 표시용)
+    const secs = draftsMap?.[unit?.unitId]?.sections || {}
+    const sectionTexts = Object.entries(secs).map(([key, sec]) => ({
+      key,
+      label: SECTION_LABELS[key] || key,
+      text: sec?.content?.policyFields ? Object.values(sec.content.policyFields).filter(v => typeof v === 'string' && v.trim()).join('\n') : (sec?.content?.text || ''),
+    }))
+    // 섹션 예산 합계 (진단용)
+    const sectionTotal = secFlat.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
     setDetail({
-      title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} — ${f.title || '정책안'}`,
+      title: `${unit.ministryName || groups?.[unit.groupId]?.name || '부처'} — ${f.title || policy?.ministryName || '정책안'}`,
       who: policy?.status === 'submitted' ? '제출 완료' : policy?.status === 'requested' ? '청구 확정' : (policy?.status || ''),
       fields: f,
       links: [],
       budgetItems: policyBudget.length > 0 ? policyBudget : secFlat,
       budgetSource: policyBudget.length > 0 ? 'policy' : (secFlat.length > 0 ? 'section' : 'none'),
       sectionBudgetGroups: secGroups,
+      rawBudget: Number(policy?.requestedBudget ?? policy?.draftBudget) || 0,
+      sectionTotal,
+      sectionTexts,
       status: policy?.status,
       isPolicy: true,
     })
@@ -1053,11 +1065,55 @@ function Phase3ExecutiveQuickPanel() {
 
             {detail.isPolicy ? (
               <div className="space-y-2 text-xs">
-                {detail.fields?.ordinance && <div><p className="font-bold text-slate-600">📜 시행령</p><p className="whitespace-pre-wrap text-slate-800 bg-slate-50 rounded p-2">{detail.fields.ordinance}</p></div>}
-                {detail.fields?.problem && <div><p className="font-bold text-slate-600">문제·배경</p><p className="whitespace-pre-wrap text-slate-800">{detail.fields.problem}</p></div>}
-                {detail.fields?.content && <div><p className="font-bold text-slate-600">집행계획</p><p className="whitespace-pre-wrap text-slate-800">{detail.fields.content}</p></div>}
-                {detail.fields?.evidence && <div><p className="font-bold text-slate-600">근거·사례</p><p className="whitespace-pre-wrap text-slate-800">{detail.fields.evidence}</p></div>}
-                {(detail.fields?.publicConcern || detail.fields?.publicResponse) && <div><p className="font-bold text-slate-600">국민 눈높이</p><p className="whitespace-pre-wrap text-slate-800">{[detail.fields.publicConcern, detail.fields.publicResponse].filter(Boolean).join('\n')}</p></div>}
+                {/* 제출된 예산 진단 줄 */}
+                <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-slate-500">
+                  <span>제출상태: <b className="text-slate-700">{detail.status || '?'}</b></span>
+                  <span>requestedBudget: <b className={detail.rawBudget > 0 ? 'text-emerald-600' : 'text-rose-500'}>{detail.rawBudget ?? 0}억</b></span>
+                  <span>섹션예산합계: <b className={detail.sectionTotal > 0 ? 'text-emerald-600' : 'text-rose-500'}>{detail.sectionTotal ?? 0}억</b></span>
+                </div>
+                {/* 정책 필드: 비어있지 않은 것만 모두 표시 */}
+                {(() => {
+                  const FIELD_LABELS = {
+                    ordinance: '📜 시행령',
+                    problem: '문제·배경',
+                    purpose: '정책 목적',
+                    targetCitizens: '대상 시민',
+                    content: '집행 계획',
+                    support: '지원 내용',
+                    exception: '예외·제한',
+                    evidence: '근거·사례',
+                    publicConcern: '국민 눈높이 — 우려',
+                    publicResponse: '국민 눈높이 — 답변',
+                    expectedEffect: '기대 효과',
+                    discussionReflection: '토의 반영',
+                    finalMessage: '마지막 한 마디',
+                    finalScale: '최종 규모',
+                  }
+                  const entries = Object.entries(FIELD_LABELS).filter(([k]) => detail.fields?.[k]?.trim?.())
+                  if (entries.length === 0) return (
+                    <p className="text-rose-500 font-bold text-[11px]">⚠ 정책 내용이 없습니다. 대표가 "모둠원 작성본 불러오기" 후 최종 제출하지 않았을 가능성이 있습니다.</p>
+                  )
+                  return entries.map(([k, label]) => (
+                    <div key={k}>
+                      <p className="font-bold text-slate-600">{label}</p>
+                      <p className="whitespace-pre-wrap text-slate-800 bg-slate-50 rounded p-2">{detail.fields[k]}</p>
+                    </div>
+                  ))
+                })()}
+                {/* 섹션별 원본 텍스트 (정책 필드 없을 때 섹션 내용을 직접 표시) */}
+                {detail.sectionTexts?.length > 0 && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[11px] font-bold text-indigo-600">📋 모둠원 섹션 작성 원본 보기</summary>
+                    <div className="mt-1 space-y-2">
+                      {detail.sectionTexts.map((st) => st.text?.trim() ? (
+                        <div key={st.key}>
+                          <p className="font-bold text-slate-500 text-[10px]">{st.label}</p>
+                          <p className="whitespace-pre-wrap text-slate-800 bg-indigo-50 rounded p-2 text-[11px]">{st.text}</p>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </details>
+                )}
               </div>
             ) : (
               <div className="space-y-2 text-xs">

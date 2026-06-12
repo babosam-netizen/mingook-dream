@@ -1288,10 +1288,15 @@ export function ExecutiveFinalAssembler({
   }
 
   const loadPreviewToEditor = () => {
-    const allFields = {
-      ...emptyPolicyFields,
-      ...(finalDoc?.content?.policyFields || {}),
+    // 이미 직접 다듬은 내용이 있으면 경고 후 덮어쓴다(모둠원 저장본으로 새로 불러오기).
+    const hasExisting =
+      (fields && Object.values(fields).some((v) => typeof v === 'string' && v.trim())) ||
+      (Array.isArray(budgetItems) && budgetItems.length > 0)
+    if (hasExisting) {
+      if (!window.confirm('이미 직접 다듬은 내용이 있습니다.\n그 내용을 지우고, 모둠원이 저장한 작성본으로 다시 불러올까요?\n\n(불러온 뒤 [✓ 완료]를 누르면 불러온 내용 그대로 저장됩니다.)')) return
     }
+    // 기존 finalDoc을 병합하지 않고, 모둠원 저장본(sections)으로 새로 채운다.
+    const allFields = { ...emptyPolicyFields }
 
     if (!isCollaborative) {
       const isPresidentGroup = config?.branchConfig?.executive?.presidentGroupId === groupId || groups?.[groupId]?.name?.includes('대통령')
@@ -1395,10 +1400,8 @@ export function ExecutiveFinalAssembler({
 
     setFields(allFields)
 
-    // 예산 목록 병합 (중복 방지를 위해 ID 기준으로 병합)
-    const allBudgets = Array.isArray(finalDoc?.content?.budgetItems)
-      ? finalDoc.content.budgetItems.map((item) => ({ ...item }))
-      : []
+    // 예산 목록 — 모둠원 저장본으로 새로 불러온다(기존 finalDoc 예산은 제외).
+    const allBudgets = []
     const idSet = new Set()
     allBudgets.forEach((item, idx) => idSet.add(item.id || `final-${idx}`))
     Object.values(sections).forEach((sec) => {
@@ -1413,9 +1416,15 @@ export function ExecutiveFinalAssembler({
     })
 
     setBudgetItems(allBudgets)
+    // 불러온 내용을 바로 저장(미리보기 모드에서도 불러온 걸로 저장되게).
+    onSaveDraft?.({
+      policyFields: allFields,
+      budgetItems: allBudgets,
+      savedSections: finalDoc?.content?.savedSections || {},
+    })
     alert(isCollaborative
-      ? '부서원들이 작성한 모든 초안 텍스트와 예산 항목을 성공적으로 취합하였습니다.'
-      : '모둠원의 시행령 조항(제1조~제5조)과 예산 항목을 순서대로 조립했습니다. 흐름과 표현을 다듬어 최종 제출하세요.')
+      ? '부서원들이 작성한 모든 초안 텍스트와 예산 항목을 성공적으로 취합하여 저장했습니다.'
+      : '모둠원의 시행령 조항(제1조~제5조)과 예산 항목을 불러와 저장했습니다. 흐름과 표현을 다듬어 최종 제출하세요.')
   }
 
   const budgetTotal = useMemo(() => budgetItemTotal(budgetItems), [budgetItems])
@@ -1481,7 +1490,7 @@ export function ExecutiveFinalAssembler({
                 onClick={loadPreviewToEditor}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition"
               >
-                부서원 초안 가져와 병합하기 ↓
+                📥 모둠원 작성본 모두 불러오기
               </button>
               <button
                 type="button"
@@ -1492,9 +1501,11 @@ export function ExecutiveFinalAssembler({
               </button>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 text-left">
-            [직접 수정하기]를 누르면 시행령, 근거·피해·보완, 예산 명세의 세부 내용을 편집하고 예산 계산기를 다시 사용할 수 있습니다.
-          </p>
+          <div className="text-[10px] text-slate-400 text-left space-y-0.5">
+            <p><b className="text-indigo-300">📥 모둠원 작성본 모두 불러오기</b>: 각 역할 학생이 저장한 시행령 조항(제1~5조)과 예산을 한 번에 가져와 최종안에 채웁니다. <b className="text-amber-300">이미 직접 다듬은 내용이 있으면 그 내용을 지우고 새로 불러옵니다(확인 후).</b> 불러온 뒤 [✓ 완료]를 누르면 그대로 저장됩니다.</p>
+            <p><b className="text-emerald-300">✏️ 최종안 직접 수정하기</b>: 시행령, 근거·피해·보완, 예산 명세를 직접 편집하고 예산 계산기를 다시 사용합니다.</p>
+            <p className="text-slate-500">※ 다른 모둠원에게는 이 화면이 읽기 전용 미리보기로 보이고, 대표만 불러오기·수정·제출할 수 있어요.</p>
+          </div>
         </div>
 
         {/* 정책 보고서 미리보기 카드 */}
@@ -1608,7 +1619,7 @@ export function ExecutiveFinalAssembler({
           <p className="opacity-80">
             {isCollaborative
               ? '시행령, 근거, 국민 눈높이, 부처 예산을 직접 편집합니다. 완료 시 미리보기로 돌아갑니다.'
-              : '모둠원이 작성한 시행령 조항과 예산 항목을 직접 다듬어 최종안을 완성합니다.'}
+              : '모둠원이 작성한 시행령 조항과 예산 항목을 직접 다듬어 최종안을 완성합니다. [📥 모둠원 작성본 모두 불러오기]는 각 역할 저장본을 새로 가져옵니다(직접 다듬은 내용이 있으면 지우고 불러오기, 확인 후).'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1617,7 +1628,7 @@ export function ExecutiveFinalAssembler({
             onClick={loadPreviewToEditor}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition"
           >
-            모둠원 초안 불러와 병합하기 ↓
+            📥 모둠원 작성본 모두 불러오기
           </button>
           <button
             type="button"
